@@ -509,6 +509,15 @@ Item {
         shortcutEnabled: win.keysFree
         onTriggered: backend.generateCaptions()
     }
+    Ui.Command {
+        commandId: "edit.caption-style"
+        text: qsTr("Caption Style…")
+        category: qsTr("Edit")
+        scope: "Edit"
+        available: win.workspace === "Edit" && backend.hasTimeline
+        shortcutEnabled: win.keysFree
+        onTriggered: captionStyleDialog.openDialog()
+    }
 
     // Keyframes: a clip's whole animation (picture properties and opacity).
     Ui.Command {

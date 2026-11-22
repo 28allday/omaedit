@@ -554,6 +554,11 @@ void Backend::wireTimelines() {
                           .arg(tracks > 1 ? tr("%n Captions track(s)", nullptr, tracks)
                                           : tr("the Captions track")));
     });
+    connect(this, &Backend::captionStyleRequested, m_worker, &PlayerWorker::restyleCaptions);
+    connect(m_worker, &PlayerWorker::captionsRestyled, this, [this](int changed, int kept) {
+        setStatus(kept ? tr("Caption style set: %n caption(s) restyled, %1 kept their own look", nullptr, changed).arg(kept)
+                       : tr("Caption style set: %n caption(s) restyled", nullptr, changed));
+    });
     // Until the worker says otherwise, a project is one sequence.
     m_sequences = {QVariantMap{{QStringLiteral("name"), QStringLiteral("Sequence 1")},
                                {QStringLiteral("position"), 0}, {QStringLiteral("configured"), false}}};

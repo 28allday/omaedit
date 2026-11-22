@@ -796,6 +796,8 @@ bool Timeline::restoreLaneEntry(const ClipEntry &e, int start, int clipIndex, bo
         if (e.titleTracking) style[QStringLiteral("tracking")] = *e.titleTracking;
         if (e.titleLineSpacing) style[QStringLiteral("lineSpacing")] = *e.titleLineSpacing;
         if (e.titlePixelSize) style[QStringLiteral("pixelSize")] = *e.titlePixelSize;
+        if (e.titleMargin) style[QStringLiteral("margin")] = *e.titleMargin;
+        if (e.titleWidth) style[QStringLiteral("width")] = *e.titleWidth;
         // (A title is made by its length, and a transition into it takes
         // its frames from the title's head: the entry counts them apart.)
         placed = connectTitleAt(title, start, e.frames + e.mixIn, style, laneNumber);

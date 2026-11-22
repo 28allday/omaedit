@@ -3,6 +3,7 @@
 #include <QColor>
 #include <QCoreApplication>
 #include <QFont>
+#include <QFontMetricsF>
 #include <QJsonDocument>
 #include <QPainter>
 #include <QTextCharFormat>
@@ -349,7 +350,22 @@ QImage EditEngine::render(const QImage &source, const QVariantMap &config, int f
         font.setItalic(style.value("italic").toBool());
         font.setLetterSpacing(QFont::AbsoluteSpacing, style.value("tracking").toDouble() * scale);
         const double lineSpacing = qBound(.5, style.value("lineSpacing", 1.).toDouble(), 4.);
-        const double boxWidth = w * .9;
+        // The width the words wrap in (percent of the frame's), centred.
+        const double widthShare = style.contains("width") ? qBound(20., style.value("width").toDouble(), 100.) / 100. : .9;
+        const double boxWidth = w * widthShare;
+        const double left = (w - boxWidth) / 2;
+        // By an edge (a caption): a line wider than its width is first drawn
+        // smaller, down to 60 %, so the caption keeps the lines it was given
+        // rather than leaving a word on a line of its own.
+        const bool edge = style.value("place") == "top" || style.value("place") == "bottom";
+        if (edge) {
+            const QFontMetricsF metrics(font);
+            double widest = 0;
+            for (const QString &line : config.value("text").toString().split('\n'))
+                if (line.contains(' ')) widest = qMax(widest, metrics.horizontalAdvance(line));
+            if (widest > boxWidth)
+                font.setPixelSize(qMax(1, int(font.pixelSize() * qMax(.6, boxWidth / widest)))); // rounded down: it must fit
+        }
         QTextOption option;
         option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
         const auto align = style.value("align").toString();
@@ -390,15 +406,34 @@ QImage EditEngine::render(const QImage &source, const QVariantMap &config, int f
         }
         if (ink.isEmpty())
             ink = QRectF(0, 0, boxWidth, total);
-        const double centre = style.value("place").toString() == "lower" ? h * .8 : h / 2.;
-        const double top = centre - ink.height() / 2 - ink.top();
+        // By an edge ("top", "bottom"): the letters' outer edge sits the
+        // margin (percent of the frame's height) in from it. Otherwise
+        // centred on the frame's middle, or at 80 % for a lower third.
+        const QString place = style.value("place").toString();
+        const double margin = qBound(0., style.value("margin", 8.).toDouble(), 45.) / 100. * h;
+        const double centre = place == "lower" ? h * .8 : h / 2.;
+        const double top = place == "bottom" ? h - margin - ink.bottom()
+                           : place == "top"  ? margin - ink.top()
+                                             : centre - ink.height() / 2 - ink.top();
         QPainter p(&result);
         p.setRenderHint(QPainter::TextAntialiasing);
         QColor bg(style.value("bg").toString());
-        if (bg.isValid() && bg.alpha() > 0)
-            p.fillRect(QRectF(w * .05 - 4 * scale, top - 4 * scale, boxWidth + 8 * scale, total + 8 * scale),
+        if (bg.isValid() && bg.alpha() > 0 && edge) {
+            // A caption's box sits behind each line's words, edge to edge
+            // between the lines.
+            const double pad = font.pixelSize() * .25;
+            for (int i = 0; i < layout.lineCount(); ++i) {
+                const QTextLine line = layout.lineAt(i);
+                const QRectF words = line.naturalTextRect();
+                if (words.width() <= 0) continue;
+                const double y0 = top + line.y() - (i == 0 ? pad * .5 : 0);
+                const double y1 = top + (i + 1 < layout.lineCount() ? layout.lineAt(i + 1).y() : line.y() + line.height() + pad * .5);
+                p.fillRect(QRectF(left + words.x() - pad, y0, words.width() + 2 * pad, y1 - y0), bg);
+            }
+        } else if (bg.isValid() && bg.alpha() > 0)
+            p.fillRect(QRectF(left - 4 * scale, top - 4 * scale, boxWidth + 8 * scale, total + 8 * scale),
                        bg);
-        layout.draw(&p, QPointF(w * .05, top));
+        layout.draw(&p, QPointF(left, top));
         // Fill outlined glyphs independently of the painter's outline brush.
         if (style.value("outline", true).toBool()) {
             format.clearProperty(QTextFormat::TextOutline);
@@ -414,7 +449,7 @@ QImage EditEngine::render(const QImage &source, const QVariantMap &config, int f
                 lineY += line.height() * lineSpacing;
             }
             layout.endLayout();
-            layout.draw(&p, QPointF(w * .05, top));
+            layout.draw(&p, QPointF(left, top));
         }
     }
     return result;

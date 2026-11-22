@@ -414,7 +414,7 @@ struct LinearRenderer::State {
                 image=QImage(size,QImage::Format_RGBA32FPx4);image.fill(color);
             } else if(!e.value("title").toString().isEmpty()) {
                 image=QImage(size,QImage::Format_RGBA32FPx4);image.fill(Qt::transparent);
-                QVariantMap style;for(const auto &key:QStringList{"Font","Color","Size","Place","Align","Weight","Italic","Bg","Outline","PixelSize","Tracking","LineSpacing"}) {
+                QVariantMap style;for(const auto &key:QStringList{"Font","Color","Size","Place","Align","Weight","Italic","Bg","Outline","PixelSize","Tracking","LineSpacing","Margin","Width"}) {
                     QString name=key;name[0]=name[0].toLower();style[name]=e.value("title"+key);
                 }
                 image=EditEngine::render(image,{{"group","title"},{"style",style},{"text",e.value("title")},{"height",size.height()}},local);

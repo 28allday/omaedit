@@ -283,6 +283,12 @@ public slots:
     // undo step named `label`.
     void placeCaptions(const QVariantList &cues, const QVariantMap &style,
                        const QVariantList &remove, const QString &label);
+    // Edit ▸ Captions ▸ Caption Style: `style` becomes the look of the
+    // timeline's captions, kept on every caption track (a "Captions" track is
+    // made if there is none). The captions that follow the old look (and have
+    // not been dragged) take the new one; with everyCaption, all of them do,
+    // dragged ones put back in place. One undo step.
+    void restyleCaptions(const QVariantMap &style, bool everyCaption);
     // Looks: blend mode, lens correction (edits, undoable).
     void setMixAlign(int track, int index, const QString &align); // dissolve alignment, undoable
     // A transition across the cut between clip `index` of `track` and the
@@ -585,6 +591,7 @@ signals:
     void sequenceImportFinished(const QString &name, const QStringList &problems, bool ok, const QString &error);
     void sequenceOpenFailed(const QString &name); // its media is missing; stayed on the previous one
     void captionsImported(int placed, int tracks);
+    void captionsRestyled(int changed, int kept);
     void previewOpened(bool ok, const QString &path, int duration, double fps);
     void previewFrameReady(const QImage &image, int position);
     void skimFrameReady(const QImage &image, int frame);

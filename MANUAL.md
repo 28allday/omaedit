@@ -798,6 +798,21 @@ track is just that — a gap you can drop into, trim into, or ripple away.
   transcribed first, one after another, and the captions follow. Retimed clips
   are left out. A caption never lands on another: it goes to the next caption
   track instead. Each is one undo step.
+  **Edit ▸ Captions ▸ Caption Style…** (also in a caption track's header
+  menu) sets one look for every caption on the timeline: font, size, colour,
+  bold or italic, outline and background box, and where they sit: **Bottom**,
+  **Top** or **Centre**, the distance from that edge (a percentage of the
+  frame's height) and the width the words wrap in (a percentage of its width).
+  **OK** restyles the captions that still have the timeline's look in one undo
+  step; a caption you gave a look of its own, or dragged elsewhere in the
+  viewer, keeps it unless you choose **Every caption takes this style**. New,
+  imported and generated captions take the style. The same window sets how
+  Generate Captions cuts speech into captions: the most letters on a line
+  (42), the most lines (2) and the shortest time on screen (1 second). A
+  caption ends at the end of a sentence or at a pause, and each is timed by
+  the words in it. **Regenerate Captions** makes them again at those lengths,
+  in place of every caption on the caption tracks (words you typed into them
+  are lost; Undo brings them back).
 - **Timeline interchange**: File ▸ Import Timeline… reads an OpenTimelineIO
   (`.otio`), CMX 3600 EDL (`.edl`), XML timeline (`.fcpxml`), legacy XML
   timeline (`.xml`) or AAF (`.aaf`) file as a new sequence in the current

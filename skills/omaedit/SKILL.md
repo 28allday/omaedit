@@ -120,6 +120,9 @@ use `call PROJECT OP --args JSON`, with `--output` or `--in-place` for edits.
 For colour/audio/effect maps, start from inspected or default data and preserve
 unrelated fields. Use the actual catalogue for grades, masks, mixer routing,
 effects, captions, interchange and archive operations.
+To restyle or reposition captions, call `editor.setCaptionStyle` once with the
+style keys you change (see `editor.captionStyleSettings`) rather than editing
+each caption's title.
 
 ## Values and verification
 

@@ -125,6 +125,11 @@ Item {
             onTriggered:backend.setTrackMix(trackContextMenu.track,"captionBurnIn",checked)
         }
         KeyMenuItem {
+            text:qsTr("Caption Style…")
+            visible:trackContextMenu.track>=0 && !!backend.tracks[trackContextMenu.track] && backend.tracks[trackContextMenu.track].mix.editKind === "caption"
+            onTriggered:Ui.Commands.trigger("edit.caption-style")
+        }
+        KeyMenuItem {
             text:backend.recordingTake?qsTr("Stop recording"):qsTr("Record on this track")
             visible:trackContextMenu.track>=0 && !!backend.tracks[trackContextMenu.track] && backend.tracks[trackContextMenu.track].kind === "audio"
             enabled:trackContextMenu.track>=0 && !!backend.tracks[trackContextMenu.track] && !backend.tracks[trackContextMenu.track].locked

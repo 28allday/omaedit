@@ -1112,7 +1112,7 @@ struct TimelineRenderer::State {
         if (!e.value("title").toString().isEmpty()) {
             QVariantMap style;
             for (const auto &key : QStringList{"Font", "Color", "Size", "Place", "Align", "Weight", "Italic", "Bg", "Outline",
-                                               "PixelSize", "Tracking", "LineSpacing"}) {
+                                               "PixelSize", "Tracking", "LineSpacing", "Margin", "Width"}) {
                 QString name = key;
                 name[0] = name[0].toLower();
                 style[name] = e.value("title" + key);

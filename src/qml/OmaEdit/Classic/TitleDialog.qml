@@ -10,7 +10,11 @@ Ui.FormDialog {
     width: Math.min(560, parent ? parent.width - Ui.Theme.s5 * 2 : 560)
     // editIndex >= 0 = editing that connected clip's text in place.
     property int editIndex: -1
-    readonly property var placeKeys: ["centre", "lower"]
+    readonly property var placeKeys: ["centre", "lower", "bottom", "top"]
+    // A caption's distance from its edge and wrapping width (Caption Style),
+    // kept as they were: this dialog does not set them.
+    property var keptMargin: undefined
+    property var keptWidth: undefined
     readonly property var sizeKeys: ["small", "medium", "large"]
     // White first = the default; stored as "" so default titles carry no
     // colour property at all.
@@ -49,6 +53,8 @@ Ui.FormDialog {
         spacingField.value = x.lineSpacing !== undefined ? Math.round(x.lineSpacing*100) : 100
         pixelField.value = x.pixelSize !== undefined ? x.pixelSize : 0
         customColor.text = color || "#ffffff"
+        keptMargin = x.margin
+        keptWidth = x.width
         open()
     }
 
@@ -93,7 +99,7 @@ Ui.FormDialog {
                 Accessible.name: tip
                 id: placeBox
                 tip: qsTr("Where the text sits in the frame")
-                model: ["Centre", "Lower Third"]
+                model: [qsTr("Centre"), qsTr("Lower Third"), qsTr("Bottom"), qsTr("Top")]
                 Layout.preferredWidth: 150
             }
             Ui.ComboField {
@@ -208,6 +214,8 @@ Ui.FormDialog {
             "outline": outlineCheck.checked
         }
         if(pixelField.value>0)style.pixelSize=pixelField.value
+        if (keptMargin !== undefined && keptMargin !== null) style.margin = keptMargin
+        if (keptWidth !== undefined && keptWidth !== null) style.width = keptWidth
         if (editIndex >= 0)
             backend.updateTitle(editIndex, titleField.text, style)
         else

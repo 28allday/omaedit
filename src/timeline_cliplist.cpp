@@ -439,6 +439,8 @@ static void readName(edit::ClipInfo *info, const QString &path, ClipEntry &entry
             if(values.contains("tracking"))entry.titleTracking = values["tracking"];
             if(values.contains("lineSpacing"))entry.titleLineSpacing = values["lineSpacing"];
             if(values.contains("pixelSize"))entry.titlePixelSize = values["pixelSize"];
+            if(values.contains("margin"))entry.titleMargin = values["margin"];
+            if(values.contains("width"))entry.titleWidth = values["width"];
         }
         const char *font = info->producer->get("omavid:titleFont");
         const char *color = info->producer->get("omavid:titleColor");

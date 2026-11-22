@@ -52,6 +52,7 @@
         <file alias="AppMenu.qml">qml/OmaEdit/Classic/AppMenu.qml</file>
         <file alias="BinContextMenu.qml">qml/OmaEdit/Classic/BinContextMenu.qml</file>
         <file alias="BrowserPane.qml">qml/OmaEdit/Classic/BrowserPane.qml</file>
+        <file alias="CaptionStyleDialog.qml">qml/OmaEdit/Classic/CaptionStyleDialog.qml</file>
         <file alias="CategoriesDialog.qml">qml/OmaEdit/Classic/CategoriesDialog.qml</file>
         <file alias="CategoryMenu.qml">qml/OmaEdit/Classic/CategoryMenu.qml</file>
         <file alias="ChangeDurationDialog.qml">qml/OmaEdit/Classic/ChangeDurationDialog.qml</file>

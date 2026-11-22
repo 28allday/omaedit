@@ -25,6 +25,7 @@ LibraryContextMenu 1.0 LibraryContextMenu.qml
 BinContextMenu 1.0 BinContextMenu.qml
 RulerContextMenu 1.0 RulerContextMenu.qml
 TitleDialog 1.0 TitleDialog.qml
+CaptionStyleDialog 1.0 CaptionStyleDialog.qml
 MarkerDialog 1.0 MarkerDialog.qml
 VolumeDialog 1.0 VolumeDialog.qml
 ChangeDurationDialog 1.0 ChangeDurationDialog.qml

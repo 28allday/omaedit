@@ -2076,8 +2076,24 @@
             <source>No captions placed — is the Captions track locked?</source>
             <translation>No captions placed — is the Captions track locked?</translation>
         </message>
+        <message numerus="yes">
+            <location line="+8" />
+            <source>Caption style set: %n caption(s) restyled, %1 kept their own look</source>
+            <translation>
+                <numerusform>Caption style set: %n caption restyled, %1 kept their own look</numerusform>
+                <numerusform>Caption style set: %n captions restyled, %1 kept their own look</numerusform>
+            </translation>
+        </message>
+        <message numerus="yes">
+            <location line="+1" />
+            <source>Caption style set: %n caption(s) restyled</source>
+            <translation>
+                <numerusform>Caption style set: %n caption restyled</numerusform>
+                <numerusform>Caption style set: %n captions restyled</numerusform>
+            </translation>
+        </message>
         <message>
-            <location line="+75" />
+            <location line="+71" />
             <location filename="../src/backendlibrary.cpp" line="+225" />
             <source>Created %1</source>
             <translation>Created %1</translation>
@@ -2255,7 +2271,97 @@
             <translation>No captions found in %1</translation>
         </message>
         <message>
-            <location line="+17" />
+            <location line="+42" />
+            <source>Caption Style needs a timeline, and no export running</source>
+            <translation>Caption Style needs a timeline, and no export running</translation>
+        </message>
+        <message>
+            <location line="+4" />
+            <source>Caption style not set: %1</source>
+            <translation>Caption style not set: %1</translation>
+        </message>
+        <message>
+            <location line="+11" />
+            <source>%1 is not a caption style setting</source>
+            <translation>%1 is not a caption style setting</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>size is small, medium or large</source>
+            <translation>size is small, medium or large</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>pixelSize is 0 to 2000</source>
+            <translation>pixelSize is 0 to 2000</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>color is #rrggbb</source>
+            <translation>color is #rrggbb</translation>
+        </message>
+        <message>
+            <location line="+4" />
+            <source>bg is empty, #rrggbb or #aarrggbb</source>
+            <translation>bg is empty, #rrggbb or #aarrggbb</translation>
+        </message>
+        <message>
+            <location line="+3" />
+            <source>weight is empty or bold</source>
+            <translation>weight is empty or bold</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>%1 is true or false</source>
+            <translation>%1 is true or false</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>align is left, centre or right</source>
+            <translation>align is left, centre or right</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>place is top, centre or bottom</source>
+            <translation>place is top, centre or bottom</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>margin is 0 to 45 (percent of the height)</source>
+            <translation>margin is 0 to 45 (percent of the height)</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>width is 20 to 100 (percent of the width)</source>
+            <translation>width is 20 to 100 (percent of the width)</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>lineSpacing is 0.5 to 4</source>
+            <translation>lineSpacing is 0.5 to 4</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>tracking is -50 to 200</source>
+            <translation>tracking is -50 to 200</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>maxChars is 16 to 80</source>
+            <translation>maxChars is 16 to 80</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>maxLines is 1 to 3</source>
+            <translation>maxLines is 1 to 3</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>minSeconds is 0.3 to 10</source>
+            <translation>minSeconds is 0.3 to 10</translation>
+        </message>
+        <message>
+            <location line="+137" />
             <source>Caption</source>
             <translation>Caption</translation>
         </message>
@@ -2312,7 +2418,7 @@
             </translation>
         </message>
         <message>
-            <location line="+60" />
+            <location line="+69" />
             <source>Generate Captions cannot transcribe the clips: %1</source>
             <translation>Generate Captions cannot transcribe the clips: %1</translation>
         </message>
@@ -2340,9 +2446,14 @@
             <translation>No speech was found in the timeline's clips</translation>
         </message>
         <message>
-            <location line="+3" />
+            <location line="+10" />
             <source>Generate captions</source>
             <translation>Generate captions</translation>
+        </message>
+        <message>
+            <location line="+0" />
+            <source>Regenerate captions</source>
+            <translation>Regenerate captions</translation>
         </message>
         <message numerus="yes">
             <location line="+1" />
@@ -2440,7 +2551,7 @@
             <translation>“%1” holds no clips to place.</translation>
         </message>
         <message>
-            <location filename="../src/backend.cpp" line="-384" />
+            <location filename="../src/backend.cpp" line="-389" />
             <source>Imported “%1” as a new sequence</source>
             <translation>Imported “%1” as a new sequence</translation>
         </message>
@@ -2750,7 +2861,7 @@
             <translation>the Captions track</translation>
         </message>
         <message>
-            <location line="+332" />
+            <location line="+337" />
             <source>Recovered project copy. Use Save As to keep it.</source>
             <translation>Recovered project copy. Use Save As to keep it.</translation>
         </message>
@@ -3242,7 +3353,7 @@
             <translation>Stabilised</translation>
         </message>
         <message numerus="yes">
-            <location filename="../src/backendcaptions.cpp" line="-218" />
+            <location filename="../src/backendcaptions.cpp" line="-432" />
             <source>Importing %n caption(s) from %1…</source>
             <translation>
                 <numerusform>Importing %n caption from %1…</numerusform>
@@ -3255,7 +3366,7 @@
             <translation>The project changed before the import finished.</translation>
         </message>
         <message numerus="yes">
-            <location filename="../src/backendcaptions.cpp" line="+221" />
+            <location filename="../src/backendcaptions.cpp" line="+435" />
             <source>%n caption(s) written to %1</source>
             <translation>
                 <numerusform>%n caption written to %1</numerusform>
@@ -3273,7 +3384,7 @@
             <translation>Before / after off</translation>
         </message>
         <message numerus="yes">
-            <location filename="../src/backend.cpp" line="-551" />
+            <location filename="../src/backend.cpp" line="-556" />
             <location filename="../src/backendedits.cpp" line="-926" />
             <source>Pasted %n clip(s)</source>
             <translation>
@@ -3836,7 +3947,7 @@
             <translation>Trim mode: normal</translation>
         </message>
         <message>
-            <location filename="../src/backend.cpp" line="+739" />
+            <location filename="../src/backend.cpp" line="+744" />
             <source>Undid %1</source>
             <translation>Undid %1</translation>
         </message>
@@ -3846,7 +3957,7 @@
             <translation>Redid %1</translation>
         </message>
         <message>
-            <location line="-1001" />
+            <location line="-1006" />
             <source>Low disk space</source>
             <translation>Low disk space</translation>
         </message>
@@ -4599,7 +4710,7 @@
             <translation>Queued project</translation>
         </message>
         <message>
-            <location line="+55" />
+            <location line="+59" />
             <source>Originals · OCIO</source>
             <translation>Originals · OCIO</translation>
         </message>
@@ -4999,7 +5110,7 @@
             <translation>Wait for the project operation to finish, then save.</translation>
         </message>
         <message>
-            <location line="+94" />
+            <location line="+134" />
             <source>Archiving waits until the render finishes.</source>
             <translation>Archiving waits until the render finishes.</translation>
         </message>
@@ -5457,6 +5568,268 @@
             <location filename="../src/qml/OmaEdit/Ui/CapacityBar.qml" line="+16" />
             <source>%1% used</source>
             <translation>%1% used</translation>
+        </message>
+    </context>
+    <context>
+        <name>CaptionStyleDialog</name>
+        <message>
+            <location filename="../src/qml/OmaEdit/Classic/CaptionStyleDialog.qml" line="+15" />
+            <source>Caption Style</source>
+            <translation>Caption Style</translation>
+        </message>
+        <message>
+            <location line="+70" />
+            <source>Look</source>
+            <translation>Look</translation>
+        </message>
+        <message>
+            <location line="+6" />
+            <source>Typeface every caption is drawn in</source>
+            <translation>Typeface every caption is drawn in</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>Default</source>
+            <translation>Default</translation>
+        </message>
+        <message>
+            <location line="+9" />
+            <source>Preset text size, unless a pixel size is set</source>
+            <translation>Preset text size, unless a pixel size is set</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>Small</source>
+            <translation>Small</translation>
+        </message>
+        <message>
+            <location line="+0" />
+            <source>Medium</source>
+            <translation>Medium</translation>
+        </message>
+        <message>
+            <location line="+0" />
+            <source>Large</source>
+            <translation>Large</translation>
+        </message>
+        <message>
+            <location line="+3" />
+            <location line="+4" />
+            <source>Pixels</source>
+            <translation>Pixels</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Exact text height in pixels; 0 keeps the preset size</source>
+            <translation>Exact text height in pixels; 0 keeps the preset size</translation>
+        </message>
+        <message>
+            <location line="+7" />
+            <source>Bold and italic weighting of the captions</source>
+            <translation>Bold and italic weighting of the captions</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>Regular</source>
+            <translation>Regular</translation>
+        </message>
+        <message>
+            <location line="+0" />
+            <source>Bold</source>
+            <translation>Bold</translation>
+        </message>
+        <message>
+            <location line="+0" />
+            <source>Italic</source>
+            <translation>Italic</translation>
+        </message>
+        <message>
+            <location line="+0" />
+            <source>Bold Italic</source>
+            <translation>Bold Italic</translation>
+        </message>
+        <message>
+            <location line="+11" />
+            <source>Text colour as a six-digit hex code</source>
+            <translation>Text colour as a six-digit hex code</translation>
+        </message>
+        <message>
+            <location line="+10" />
+            <source>Box drawn behind the words so they read over the picture</source>
+            <translation>Box drawn behind the words so they read over the picture</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>No background</source>
+            <translation>No background</translation>
+        </message>
+        <message>
+            <location line="+0" />
+            <source>Dark box</source>
+            <translation>Dark box</translation>
+        </message>
+        <message>
+            <location line="+0" />
+            <source>Light box</source>
+            <translation>Light box</translation>
+        </message>
+        <message>
+            <location line="+0" />
+            <source>Black box</source>
+            <translation>Black box</translation>
+        </message>
+        <message>
+            <location line="+6" />
+            <source>Outline</source>
+            <translation>Outline</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>Draw a dark edge round the letters for legibility</source>
+            <translation>Draw a dark edge round the letters for legibility</translation>
+        </message>
+        <message>
+            <location line="+5" />
+            <source>Position</source>
+            <translation>Position</translation>
+        </message>
+        <message>
+            <location line="+7" />
+            <source>Which part of the frame the captions sit in</source>
+            <translation>Which part of the frame the captions sit in</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>Bottom</source>
+            <translation>Bottom</translation>
+        </message>
+        <message>
+            <location line="+0" />
+            <source>Top</source>
+            <translation>Top</translation>
+        </message>
+        <message>
+            <location line="+0" />
+            <location line="+29" />
+            <source>Centre</source>
+            <translation>Centre</translation>
+        </message>
+        <message>
+            <location line="-26" />
+            <location line="+4" />
+            <source>Margin</source>
+            <translation>Margin</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Distance from the top or bottom edge, in percent of the frame's height</source>
+            <translation>Distance from the top or bottom edge, in percent of the frame's height</translation>
+        </message>
+        <message>
+            <location line="+5" />
+            <location line="+4" />
+            <source>Width</source>
+            <translation>Width</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Width the words wrap in, in percent of the frame's width</source>
+            <translation>Width the words wrap in, in percent of the frame's width</translation>
+        </message>
+        <message>
+            <location line="+8" />
+            <source>How the lines of a caption line up with each other</source>
+            <translation>How the lines of a caption line up with each other</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>Left</source>
+            <translation>Left</translation>
+        </message>
+        <message>
+            <location line="+0" />
+            <source>Right</source>
+            <translation>Right</translation>
+        </message>
+        <message>
+            <location line="+6" />
+            <source>Generated captions</source>
+            <translation>Generated captions</translation>
+        </message>
+        <message>
+            <location line="+3" />
+            <location line="+4" />
+            <source>Letters a line</source>
+            <translation>Letters a line</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Most letters on one line of a generated caption</source>
+            <translation>Most letters on one line of a generated caption</translation>
+        </message>
+        <message>
+            <location line="+3" />
+            <location line="+4" />
+            <source>Lines</source>
+            <translation>Lines</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Most lines in one generated caption</source>
+            <translation>Most lines in one generated caption</translation>
+        </message>
+        <message>
+            <location line="+3" />
+            <source>Seconds</source>
+            <translation>Seconds</translation>
+        </message>
+        <message>
+            <location line="+4" />
+            <source>Seconds on screen</source>
+            <translation>Seconds on screen</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Shortest time a generated caption stays on screen, in seconds, where the next one leaves room</source>
+            <translation>Shortest time a generated caption stays on screen, in seconds, where the next one leaves room</translation>
+        </message>
+        <message>
+            <location line="+10" />
+            <source>Regenerate Captions</source>
+            <translation>Regenerate Captions</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>Make the captions again from the timeline's speech at these lengths, in this style. Words typed into captions are lost; Undo brings them back.</source>
+            <translation>Make the captions again from the timeline's speech at these lengths, in this style. Words typed into captions are lost; Undo brings them back.</translation>
+        </message>
+        <message>
+            <location line="+16" />
+            <source>Whether captions given a look of their own, or dragged elsewhere, take this style too</source>
+            <translation>Whether captions given a look of their own, or dragged elsewhere, take this style too</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>Captions with their own look keep it</source>
+            <translation>Captions with their own look keep it</translation>
+        </message>
+        <message>
+            <location line="+0" />
+            <source>Every caption takes this style</source>
+            <translation>Every caption takes this style</translation>
+        </message>
+        <message numerus="yes">
+            <location line="+10" />
+            <source>Applies to the %n caption(s) on the timeline, and to new and generated ones. One undo step.</source>
+            <translation>
+                <numerusform>Applies to the %n caption on the timeline, and to new and generated ones. One undo step.</numerusform>
+                <numerusform>Applies to the %n captions on the timeline, and to new and generated ones. One undo step.</numerusform>
+            </translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>New, imported and generated captions take this style.</source>
+            <translation>New, imported and generated captions take this style.</translation>
         </message>
     </context>
     <context>
@@ -8329,7 +8702,7 @@ Drag to change length</translation>
     <context>
         <name>EditEngine</name>
         <message>
-            <location filename="../src/editengine.cpp" line="+108" />
+            <location filename="../src/editengine.cpp" line="+109" />
             <source>Unknown motion preset.</source>
             <translation>Unknown motion preset.</translation>
         </message>
@@ -8416,6 +8789,11 @@ Drag to change length</translation>
             <location line="+7" />
             <source>Generate Captions</source>
             <translation>Generate Captions</translation>
+        </message>
+        <message>
+            <location line="+8" />
+            <source>Caption Style…</source>
+            <translation>Caption Style…</translation>
         </message>
         <message>
             <location line="+9" />
@@ -9184,46 +9562,46 @@ Drag to change length</translation>
         <name>ExportSpec</name>
         <message>
             <location filename="../src/exportspec.cpp" line="+55" />
-            <location line="+1437" />
+            <location line="+1446" />
             <source>Save location is writable</source>
             <translation>Save location is writable</translation>
         </message>
         <message>
-            <location line="-1436" />
+            <location line="-1445" />
             <source>Another render already targets %1</source>
             <translation>Another render already targets %1</translation>
         </message>
         <message>
             <location line="+1" />
-            <location line="+1427" />
+            <location line="+1436" />
             <source>No file name</source>
             <translation>No file name</translation>
         </message>
         <message>
-            <location line="-1426" />
-            <location line="+1428" />
+            <location line="-1435" />
+            <location line="+1437" />
             <source>Save location does not exist</source>
             <translation>Save location does not exist</translation>
         </message>
         <message>
-            <location line="-1427" />
-            <location line="+1429" />
+            <location line="-1436" />
+            <location line="+1438" />
             <source>Save location is not writable</source>
             <translation>Save location is not writable</translation>
         </message>
         <message>
-            <location line="-1428" />
+            <location line="-1437" />
             <source>A folder occupies %1</source>
             <translation>A folder occupies %1</translation>
         </message>
         <message>
             <location line="+2" />
-            <location line="+1428" />
+            <location line="+1437" />
             <source>%1 exists and will be replaced</source>
             <translation>%1 exists and will be replaced</translation>
         </message>
         <message>
-            <location line="-1414" />
+            <location line="-1423" />
             <source>Could not move the render into place: %1. The destination may already exist; review it before retrying.</source>
             <translation>Could not move the render into place: %1. The destination may already exist; review it before retrying.</translation>
         </message>
@@ -9234,19 +9612,19 @@ Drag to change length</translation>
         </message>
         <message>
             <location line="+30" />
-            <location line="+1499" />
+            <location line="+1508" />
             <source>Select at least one audio track.</source>
             <translation>Select at least one audio track.</translation>
         </message>
         <message>
-            <location line="-1497" />
+            <location line="-1506" />
             <location line="+20" />
             <location line="+12" />
             <source>This batch exceeds 1,000 jobs; increase the split duration.</source>
             <translation>This batch exceeds 1,000 jobs; increase the split duration.</translation>
         </message>
         <message>
-            <location line="+1331" />
+            <location line="+1340" />
             <source>The timeline is empty</source>
             <translation>The timeline is empty</translation>
         </message>
@@ -12484,7 +12862,7 @@ Drag to change length</translation>
     <context>
         <name>LaneClipBlock</name>
         <message>
-            <location filename="../src/qml/OmaEdit/Classic/LaneClipBlock.qml" line="+160" />
+            <location filename="../src/qml/OmaEdit/Classic/LaneClipBlock.qml" line="+168" />
             <source>CC · %1</source>
             <translation>CC · %1</translation>
         </message>
@@ -17889,7 +18267,7 @@ Drag to change length</translation>
             <translation>Required media, LUT or colour configuration is unavailable: %1</translation>
         </message>
         <message>
-            <location line="+30" />
+            <location line="+31" />
             <source>Could not create temporary files in the export folder.</source>
             <translation>Could not create temporary files in the export folder.</translation>
         </message>
@@ -17904,7 +18282,7 @@ Drag to change length</translation>
             <translation>The sound cannot be made: %1</translation>
         </message>
         <message>
-            <location line="+354" />
+            <location line="+430" />
             <source>Could not move the render into place: %1 is a file, not a folder.</source>
             <translation>Could not move the render into place: %1 is a file, not a folder.</translation>
         </message>
@@ -19305,6 +19683,11 @@ Drag to change length</translation>
             <location filename="../src/playerworkercaptions.cpp" line="+4" />
             <source>Import captions</source>
             <translation>Import captions</translation>
+        </message>
+        <message>
+            <location line="+156" />
+            <source>Caption style</source>
+            <translation>Caption style</translation>
         </message>
         <message>
             <location filename="../src/playerworkeredits.cpp" line="+51" />
@@ -22877,7 +23260,7 @@ Saved %2. The named project and its backups will remain available.</translation>
             <translation>Could not save the queued project snapshot.</translation>
         </message>
         <message>
-            <location line="+255" />
+            <location line="+267" />
             <source>The render queue cannot be saved. Check access to your settings folder.</source>
             <translation>The render queue cannot be saved. Check access to your settings folder.</translation>
         </message>
@@ -24666,7 +25049,7 @@ Saved %2. The named project and its backups will remain available.</translation>
             <location line="+305" />
             <location line="+11" />
             <location line="+26" />
-            <location line="+929" />
+            <location line="+938" />
             <location line="+11" />
             <location line="+11" />
             <location line="+10" />
@@ -24694,7 +25077,7 @@ Saved %2. The named project and its backups will remain available.</translation>
             <translation>View</translation>
         </message>
         <message>
-            <location line="-3087" />
+            <location line="-3096" />
             <source>Focus Previous Panel</source>
             <translation>Focus Previous Panel</translation>
         </message>
@@ -24711,7 +25094,7 @@ Saved %2. The named project and its backups will remain available.</translation>
             <location line="+11" />
             <location line="+22" />
             <location line="+11" />
-            <location line="+1599" />
+            <location line="+1608" />
             <location line="+11" />
             <location line="+11" />
             <location line="+15" />
@@ -24731,7 +25114,7 @@ Saved %2. The named project and its backups will remain available.</translation>
             <translation>Project</translation>
         </message>
         <message>
-            <location line="-3134" />
+            <location line="-3143" />
             <source>Duplicate Timeline</source>
             <translation>Duplicate Timeline</translation>
         </message>
@@ -24757,7 +25140,7 @@ Saved %2. The named project and its backups will remain available.</translation>
         </message>
         <message>
             <location line="+1" />
-            <location line="+1512" />
+            <location line="+1521" />
             <location line="+11" />
             <location line="+10" />
             <location line="+55" />
@@ -24765,7 +25148,7 @@ Saved %2. The named project and its backups will remain available.</translation>
             <translation>Application</translation>
         </message>
         <message>
-            <location line="-1578" />
+            <location line="-1587" />
             <source>Save Project</source>
             <translation>Save Project</translation>
         </message>
@@ -24781,13 +25164,13 @@ Saved %2. The named project and its backups will remain available.</translation>
         </message>
         <message>
             <location line="+1" />
-            <location line="+630" />
+            <location line="+639" />
             <location line="+1663" />
             <source>Media</source>
             <translation>Media</translation>
         </message>
         <message>
-            <location line="-2283" />
+            <location line="-2292" />
             <source>Play / Pause</source>
             <translation>Play / Pause</translation>
         </message>
@@ -24796,7 +25179,7 @@ Saved %2. The named project and its backups will remain available.</translation>
             <location line="+11" />
             <location line="+11" />
             <location line="+11" />
-            <location line="+564" />
+            <location line="+573" />
             <location line="+418" />
             <location line="+11" />
             <location line="+11" />
@@ -24818,7 +25201,7 @@ Saved %2. The named project and its backups will remain available.</translation>
             <translation>Playback</translation>
         </message>
         <message>
-            <location line="-2668" />
+            <location line="-2677" />
             <source>Shuttle Backwards</source>
             <translation>Shuttle Backwards</translation>
         </message>
@@ -24854,6 +25237,7 @@ Saved %2. The named project and its backups will remain available.</translation>
             <location line="+11" />
             <location line="+41" />
             <location line="+10" />
+            <location line="+9" />
             <location line="+9" />
             <location line="+9" />
             <location line="+11" />
@@ -24959,7 +25343,7 @@ Saved %2. The named project and its backups will remain available.</translation>
             <translation>Edit</translation>
         </message>
         <message>
-            <location line="-2442" />
+            <location line="-2451" />
             <source>Insert at Playhead</source>
             <translation>Insert at Playhead</translation>
         </message>
@@ -24990,7 +25374,7 @@ Saved %2. The named project and its backups will remain available.</translation>
         </message>
         <message>
             <location line="+1" />
-            <location line="+498" />
+            <location line="+507" />
             <location line="+11" />
             <location line="+11" />
             <location line="+11" />
@@ -24999,7 +25383,7 @@ Saved %2. The named project and its backups will remain available.</translation>
             <translation>Markers</translation>
         </message>
         <message>
-            <location line="-532" />
+            <location line="-541" />
             <source>Volume Up 1 dB</source>
             <translation>Volume Up 1 dB</translation>
         </message>
@@ -25058,7 +25442,7 @@ Saved %2. The named project and its backups will remain available.</translation>
             <location line="+1" />
             <location line="+9" />
             <location line="+9" />
-            <location line="+2357" />
+            <location line="+2366" />
             <location line="+11" />
             <location line="+11" />
             <location line="+11" />
@@ -25070,7 +25454,7 @@ Saved %2. The named project and its backups will remain available.</translation>
             <translation>Clip</translation>
         </message>
         <message>
-            <location line="-2800" />
+            <location line="-2809" />
             <source>Detect Edits: Add Markers at Each Edit</source>
             <translation>Detect Edits: Add Markers at Each Edit</translation>
         </message>
@@ -25100,7 +25484,7 @@ Saved %2. The named project and its backups will remain available.</translation>
             <translation>Generate Captions</translation>
         </message>
         <message>
-            <location line="+11" />
+            <location line="+20" />
             <source>Cut Keyframes</source>
             <translation>Cut Keyframes</translation>
         </message>
@@ -25547,7 +25931,7 @@ Saved %2. The named project and its backups will remain available.</translation>
             <translation>Undo %1</translation>
         </message>
         <message>
-            <location line="-1206" />
+            <location line="-1215" />
             <source>Edits Use Picture and Sound</source>
             <translation>Edits Use Picture and Sound</translation>
         </message>
@@ -25562,7 +25946,12 @@ Saved %2. The named project and its backups will remain available.</translation>
             <translation>Edits Use Sound Only</translation>
         </message>
         <message>
-            <location line="+519" />
+            <location line="+259" />
+            <source>Caption Style…</source>
+            <translation>Caption Style…</translation>
+        </message>
+        <message>
+            <location line="+269" />
             <source>New Nested Clip</source>
             <translation>New Nested Clip</translation>
         </message>
@@ -26471,7 +26860,7 @@ Saved %2. The named project and its backups will remain available.</translation>
             <translation>Export Current Frame…</translation>
         </message>
         <message>
-            <location line="-2021" />
+            <location line="-2030" />
             <source>Paste Insert</source>
             <translation>Paste Insert</translation>
         </message>
@@ -28365,7 +28754,7 @@ Saved %2. The named project and its backups will remain available.</translation>
     <context>
         <name>StoryClipBlock</name>
         <message>
-            <location filename="../src/qml/OmaEdit/Classic/StoryClipBlock.qml" line="+201" />
+            <location filename="../src/qml/OmaEdit/Classic/StoryClipBlock.qml" line="+209" />
             <location line="+8" />
             <source>Transition</source>
             <translation>Transition</translation>
@@ -29207,7 +29596,7 @@ Saved %2. The named project and its backups will remain available.</translation>
     <context>
         <name>TimelineScroller</name>
         <message>
-            <location filename="../src/qml/OmaEdit/Classic/TimelineScroller.qml" line="+668" />
+            <location filename="../src/qml/OmaEdit/Classic/TimelineScroller.qml" line="+687" />
             <source>Your edit will appear here</source>
             <translation>Your edit will appear here</translation>
         </message>
@@ -29238,7 +29627,7 @@ Saved %2. The named project and its backups will remain available.</translation>
     <context>
         <name>TitleDialog</name>
         <message>
-            <location filename="../src/qml/OmaEdit/Classic/TitleDialog.qml" line="+24" />
+            <location filename="../src/qml/OmaEdit/Classic/TitleDialog.qml" line="+28" />
             <source>Edit Title</source>
             <translation>Edit Title</translation>
         </message>
@@ -29248,7 +29637,7 @@ Saved %2. The named project and its backups will remain available.</translation>
             <translation>Add Title</translation>
         </message>
         <message>
-            <location line="+54" />
+            <location line="+56" />
             <location line="+3" />
             <source>Title text</source>
             <translation>Title text</translation>
@@ -29259,7 +29648,27 @@ Saved %2. The named project and its backups will remain available.</translation>
             <translation>Where the text sits in the frame</translation>
         </message>
         <message>
-            <location line="+7" />
+            <location line="+1" />
+            <source>Centre</source>
+            <translation>Centre</translation>
+        </message>
+        <message>
+            <location line="+0" />
+            <source>Lower Third</source>
+            <translation>Lower Third</translation>
+        </message>
+        <message>
+            <location line="+0" />
+            <source>Bottom</source>
+            <translation>Bottom</translation>
+        </message>
+        <message>
+            <location line="+0" />
+            <source>Top</source>
+            <translation>Top</translation>
+        </message>
+        <message>
+            <location line="+6" />
             <source>Preset text size, unless a pixel size is set below</source>
             <translation>Preset text size, unless a pixel size is set below</translation>
         </message>
@@ -29419,6 +29828,11 @@ Saved %2. The named project and its backups will remain available.</translation>
         </message>
         <message>
             <location line="+7" />
+            <source>Caption Style…</source>
+            <translation>Caption Style…</translation>
+        </message>
+        <message>
+            <location line="+5" />
             <source>Stop recording</source>
             <translation>Stop recording</translation>
         </message>

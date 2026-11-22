@@ -1017,6 +1017,7 @@ ApplicationWindow {
     Classic.RulerContextMenu { id: rulerContextMenu }
 
     Classic.TitleDialog { id: titleDialog }
+    Classic.CaptionStyleDialog { id: captionStyleDialog }
     Classic.MulticamDialog { id: multicamDialog; objectName: "multicamDialog" }
     Classic.MarkerDialog { id: markerDialog; objectName: "markerDialog" }
     Classic.PasteAttributesDialog { id: pasteAttributesDialog; objectName: "pasteAttributesDialog" }

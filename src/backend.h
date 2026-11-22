@@ -524,6 +524,30 @@ public:
     Q_INVOKABLE bool splitCaption(int connectedIndex);
     Q_INVOKABLE bool joinCaptions(const QVariantList &connectedIndices);
     Q_INVOKABLE bool generateCaptions();
+    // Edit ▸ Captions ▸ Caption Style: one look for the timeline's captions,
+    // kept on its caption tracks and used by Add, Import and Generate.
+    // Keys: font, size (small|medium|large) or pixelSize, color (#rrggbb),
+    // weight ("" | bold), italic, outline, bg ("" or #aarrggbb), align
+    // (left|centre|right), place (top|centre|bottom), margin (percent of the
+    // height, 0-45), width (percent of the width, 20-100), lineSpacing,
+    // tracking; and for Generate Captions maxChars (16-80), maxLines (1-3),
+    // minSeconds (0.3-10). captionStyleSettings gives every key.
+    Q_INVOKABLE QVariantMap captionStyleSettings() const;
+    // Sets the keys given (the rest stay). The captions that still have the
+    // old look take the new one; with everyCaption all of them do. One undo
+    // step. False, with the reason in status, for an unknown key or value.
+    Q_INVOKABLE bool setCaptionStyle(const QVariantMap &style, bool everyCaption);
+    // Generate Captions again, in place of every caption on the caption
+    // tracks (words typed into them are lost; one undo step brings them back).
+    Q_INVOKABLE bool regenerateCaptions();
+    // The cues Generate Captions makes of words [{text, start, end}] (ms):
+    // lines of at most maxChars, at most maxLines a caption, a caption ending
+    // at a sentence's end or a pause, shown at least minSeconds where the
+    // next one leaves room. Each cue {start, end (ms), text (lines by \n)}.
+    static QVariantList captionCuesFromWords(const QVariantList &words, const QVariantMap &lengths);
+    // A transcript segment's words: its own (from the transcription), or
+    // its text shared out over its time by length when it has none.
+    static QVariantList transcriptWords(const QVariantMap &segment);
     Q_INVOKABLE void importCaptionsDialog();
     Q_INVOKABLE void importCaptions(const QUrl &url);
     Q_INVOKABLE void exportCaptionsDialog();
@@ -1523,6 +1547,7 @@ signals:
     void importCaptionsRequested(const QVariantList &cues, const QVariantMap &style);
     void placeCaptionsRequested(const QVariantList &cues, const QVariantMap &style,
                                 const QVariantList &remove, const QString &label);
+    void captionStyleRequested(const QVariantMap &style, bool everyCaption);
     void splitManyRequested(int track, const QVariantList &positions, const QString &label);
     void editsDetected(int count);
     void detectingEditsChanged();
@@ -1841,7 +1866,9 @@ private:
     QVariantMap soundEntryFor(const QVariantMap &entry) const;
     bool generateCaptionsNow(bool afterTranscribing);
     void continueCaptionQueue(bool ok);
-    static QVariantMap captionStyle();
+    QVariantMap captionStyle() const; // the look new captions are made with
+    static QVariantMap defaultCaptionStyle();
+    bool m_regeneratingCaptions = false;
     QSet<QString> m_restorePending;
     QVariantList m_markers; // {frame,text,type} mirror of the worker's list
     QVariantList m_tracks;  // header state mirror, see Timeline::tracks()

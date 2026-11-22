@@ -99,6 +99,14 @@ AppMenu {
             enabled: !registeredCommand || registeredCommand.available
             onTriggered: Ui.Commands.trigger(commandId)
         }
+        MenuSeparator {}
+        KeyMenuItem {
+            text: qsTr("Caption Style…")
+            commandId: "edit.caption-style"
+            kbd: Ui.Commands.hint(commandId)
+            enabled: !registeredCommand || registeredCommand.available
+            onTriggered: Ui.Commands.trigger(commandId)
+        }
     }
 
     AppMenu {

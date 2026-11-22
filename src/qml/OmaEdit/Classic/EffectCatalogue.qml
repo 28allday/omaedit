@@ -175,7 +175,7 @@ QtObject {
         if (e === null || e === undefined)
             return null
         return { align: e.titleAlign, weight: e.titleWeight, italic: e.titleItalic,
-                 bg: e.titleBg, outline: e.titleOutline, tracking:e.titleTracking, lineSpacing:e.titleLineSpacing, pixelSize:e.titlePixelSize }
+                 bg: e.titleBg, outline: e.titleOutline, tracking:e.titleTracking, lineSpacing:e.titleLineSpacing, pixelSize:e.titlePixelSize, margin:e.titleMargin, width:e.titleWidth }
     }
     // A title's whole look as updateTitle takes it, for new words in the
     // same title. What the title never set is left out: sent as nothing, a

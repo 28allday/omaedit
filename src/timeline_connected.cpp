@@ -41,7 +41,7 @@ QVariantMap Timeline::titleStyleOf(const QVariantMap &entry) {
     style.insert(QStringLiteral("bg"), entry.value(ClipKey::titleBg));
     style.insert(QStringLiteral("outline"), entry.value(ClipKey::titleOutline, true));
     style.insert(QStringLiteral("caption"), entry.value(ClipKey::caption));
-    for(const auto &pair:QList<QPair<QString,QString>>{{"titleTracking","tracking"},{"titleLineSpacing","lineSpacing"},{"titlePixelSize","pixelSize"}})
+    for(const auto &pair:QList<QPair<QString,QString>>{{"titleTracking","tracking"},{"titleLineSpacing","lineSpacing"},{"titlePixelSize","pixelSize"},{"titleMargin","margin"},{"titleWidth","width"}})
         if(entry.contains(pair.first))style[pair.second]=entry.value(pair.first);
     return style;
 }
@@ -68,6 +68,12 @@ bool Timeline::connectTitleAt(const QString &text, int position, int length,
     if (!color.startsWith(QLatin1Char('#')) || color.size() != 7)
         color.clear(); // only #rrggbb; anything else means default white
     const bool lower = place == QStringLiteral("lower");
+    // Captions sit by a frame edge: "top" or "bottom", a margin from it and a
+    // width to wrap in (typography below). The older "lower" and "centre"
+    // keep their look.
+    const QString placed = place == QStringLiteral("top") || place == QStringLiteral("bottom") ? place
+                           : lower ? QStringLiteral("lower") : QStringLiteral("centre");
+    const bool edge = placed == QStringLiteral("top") || placed == QStringLiteral("bottom");
     const int divisor = sizeKey == QStringLiteral("small") ? 12
                         : sizeKey == QStringLiteral("large") ? 5 : 8;
     // Styling beyond the basics (all optional; absent = the old look):
@@ -96,7 +102,7 @@ bool Timeline::connectTitleAt(const QString &text, int position, int length,
     // The style rides the producer next to the text — filters don't survive
     // the path-based restore, producer properties (and project XML) do.
     producer.set("omavid:title", text.toUtf8().constData());
-    producer.set("omavid:titlePlace", lower ? "lower" : "centre");
+    producer.set("omavid:titlePlace", placed.toUtf8().constData());
     producer.set("omavid:titleSize",
                  divisor == 12 ? "small" : divisor == 5 ? "large" : "medium");
     if (!font.isEmpty())
@@ -120,9 +126,14 @@ bool Timeline::connectTitleAt(const QString &text, int position, int length,
     if(style.contains("tracking"))typography["tracking"]=qBound(-50.,style.value("tracking").toDouble(),200.);
     if(style.contains("lineSpacing"))typography["lineSpacing"]=qBound(.5,style.value("lineSpacing").toDouble(),4.);
     if(style.value("pixelSize").toDouble()>0)typography["pixelSize"]=qBound(1.,style.value("pixelSize").toDouble(),2000.);
+    // Margin from the edge and the width text wraps in, in percent of the
+    // frame's height and width. An edge place always has them, so it is
+    // drawn by the engine, which wraps and places by them.
+    if(style.contains("margin")||edge)typography["margin"]=qBound(0.,style.value("margin",8.).toDouble(),45.);
+    if(style.contains("width")||edge)typography["width"]=qBound(20.,style.value("width",90.).toDouble(),100.);
     if(!typography.isEmpty()){
         producer.set("omavid:titleTypography",QJsonDocument::fromVariant(typography).toJson(QJsonDocument::Compact).constData());
-        QVariantMap styled=style;for(auto it=typography.begin();it!=typography.end();++it)styled[it.key()]=it.value();
+        QVariantMap styled=style;for(auto it=typography.begin();it!=typography.end();++it)styled[it.key()]=it.value();styled["place"]=placed;
         edit::Filter titleFilter(*m_profile,"omaedit.title");
         titleFilter.set("config",QJsonDocument::fromVariant(QVariantMap{{"group","title"},{"style",styled},{"text",text},{"height",m_profile->height()}}).toJson(QJsonDocument::Compact).constData());
         producer.attach(titleFilter);

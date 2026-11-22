@@ -146,6 +146,18 @@ QVariant shift(const QVariant &value, const QMap<QString, int> &starts, const QM
                 auto line = v.toMap();
                 line["start"] = qBound(0, line.value("start").toInt() - qRound(offset / fps * 1000), qRound(length / fps * 1000));
                 line["end"] = qBound(0, line.value("end").toInt() - qRound(offset / fps * 1000), qRound(length / fps * 1000));
+                // Its words move with it; those cut away go.
+                if (line.contains("words")) {
+                    QVariantList words;
+                    for (const auto &w : line.value("words").toList()) {
+                        auto word = w.toMap();
+                        word["start"] = qBound(0, word.value("start").toInt() - qRound(offset / fps * 1000), qRound(length / fps * 1000));
+                        word["end"] = qBound(0, word.value("end").toInt() - qRound(offset / fps * 1000), qRound(length / fps * 1000));
+                        if (word["end"].toInt() > word["start"].toInt())
+                            words.append(word);
+                    }
+                    line["words"] = words;
+                }
                 if (line["end"].toInt() > line["start"].toInt())
                     lines.append(line);
             }

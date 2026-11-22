@@ -189,6 +189,7 @@ holds the status line set by that request, or is empty when it set none.
 | `speed.inspect`, `speed.edit`, `speed.apply` | Inspect and edit speed segments, ramps, reverse, replay and holds |
 | `editor.setTrackMix`, `editor.setMasterMix`, `loudness.*` | Mixer routing, sends, effect chains, automation, analysis and normalisation |
 | `editor.startRecording`, `editor.stopRecording`, ADR operations | Physical audio capture and recording management in a persistent session |
+| `editor.captionStyleSettings`, `editor.setCaptionStyle`, `editor.generateCaptions`, `editor.regenerateCaptions` | The timeline's one caption style (font, size, colour, box, outline, `place` top/centre/bottom, `margin` and `width` in percent) set on every caption in one undo step (`everyCaption: true` also restyles captions with their own look), and the lengths Generate Captions keeps to (`maxChars`, `maxLines`, `minSeconds`) |
 | Caption and timeline interchange operations | Caption files, OTIO (`otio`), EDL (`edl`), FCPXML (`fcpxml`), legacy XML (`xmeml`, written as `.xml`) and optional AAF (`aaf`) |
 | `render`, `render.enqueue`, `queue.*`, `presets.*` | Export settings, stems/splits, hardware choice, immutable job snapshots, pause/resume/cancel and presets |
 | `editor.archiveProject` | Portable archive, copied media and optional safe trimming |

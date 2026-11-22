@@ -283,7 +283,7 @@ void Transcriber::textStage(bool onCpu) {
     m_process = std::make_unique<QProcess>();
     m_process->setProgram(resolveCommand(m_command));
     QStringList arguments{QStringLiteral("-m"), chosen, QStringLiteral("-f"), m_wav,
-                          QStringLiteral("-oj"), QStringLiteral("-of"), m_base,
+                          QStringLiteral("-ojf"), QStringLiteral("-of"), m_base,
                           QStringLiteral("-l"), m_language, QStringLiteral("-pp"),
                           QStringLiteral("-np"), QStringLiteral("-t"), QString::number(threads())};
     // The GPU the editor's engine draws on, when it has one: whisper.cpp's
@@ -393,7 +393,11 @@ void Transcriber::cancel() {
 
 // whisper.cpp -oj: {"result": {"language": "en"}, "transcription": [{"offsets":
 // {"from": ms, "to": ms}, "text": " …"}, …]}. Segments come out in ms with
-// their text trimmed; empty or bracketed noise-only lines are dropped.
+// their text trimmed; empty or bracketed noise-only lines are dropped. With
+// -ojf each segment also lists its tokens with their offsets: a token that
+// begins with a space begins a word, the others (the rest of a word, its
+// punctuation) join the word before, and [_…_] markers are not words. They
+// come out as the segment's words [{text, start, end}].
 QVariantList Transcriber::parseWhisperJson(const QByteArray &json, QString *language) {
     QVariantList out;
     const QJsonObject root = QJsonDocument::fromJson(json).object();
@@ -407,8 +411,34 @@ QVariantList Transcriber::parseWhisperJson(const QByteArray &json, QString *lang
             continue;
         const int from = offsets.value(QStringLiteral("from")).toInt();
         const int to = qMax(from, offsets.value(QStringLiteral("to")).toInt());
-        out.append(QVariantMap{{QStringLiteral("start"), from}, {QStringLiteral("end"), to},
-                               {QStringLiteral("text"), text}});
+        QVariantMap segment{{QStringLiteral("start"), from}, {QStringLiteral("end"), to},
+                            {QStringLiteral("text"), text}};
+        QVariantList words;
+        QVariantMap word;
+        const auto keep = [&] {
+            const QString w = word.value(QStringLiteral("text")).toString().trimmed();
+            if (!w.isEmpty()) { word[QStringLiteral("text")] = w; words.append(word); }
+            word.clear();
+        };
+        for (const auto &t : seg.value(QStringLiteral("tokens")).toArray()) {
+            const QJsonObject token = t.toObject();
+            const QString piece = token.value(QStringLiteral("text")).toString();
+            if (piece.isEmpty() || piece.startsWith(QStringLiteral("[_")))
+                continue;
+            const QJsonObject at = token.value(QStringLiteral("offsets")).toObject();
+            const int a = at.value(QStringLiteral("from")).toInt(), b = qMax(a, at.value(QStringLiteral("to")).toInt());
+            if (piece.startsWith(QLatin1Char(' ')) || word.isEmpty()) {
+                keep();
+                word = QVariantMap{{QStringLiteral("text"), piece}, {QStringLiteral("start"), a}, {QStringLiteral("end"), b}};
+            } else {
+                word[QStringLiteral("text")] = word.value(QStringLiteral("text")).toString() + piece;
+                word[QStringLiteral("end")] = qMax(word.value(QStringLiteral("end")).toInt(), b);
+            }
+        }
+        keep();
+        if (!words.isEmpty())
+            segment.insert(QStringLiteral("words"), words);
+        out.append(segment);
     }
     return out;
 }
