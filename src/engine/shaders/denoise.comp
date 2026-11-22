@@ -1,0 +1,49 @@
+#version 450
+// Noise reduction for one new frame of a source (see setSourceDenoise and
+// denoiseParams): colour shared across a 5x5 window between pixels of like
+// brightness, brightness kept; then a motion-adaptive average with the last
+// cleaned frame. The CPU twin in cpu_engine.cpp does the same arithmetic.
+#extension GL_GOOGLE_include_directive : enable
+#include "common.glsl"
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(binding = 0) uniform sampler2D cur;     // this frame, converted
+layout(binding = 1, rgba32f) uniform writeonly image2D dst;
+layout(binding = 2) uniform sampler2D hist;    // the last cleaned frame
+layout(push_constant) uniform Push {
+    ivec2 size;
+    float sigma;
+    float threshold;
+    float keepMin;
+    int fresh;        // no history yet: spatial only
+} pc;
+
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    if (p.x >= pc.size.x || p.y >= pc.size.y) return;
+    vec4 c = texelFetch(cur, p, 0);
+    float yc = lumaOf(c.rgb);
+    float gc = sqrt(max(yc, 0.0));
+    vec3 csum = vec3(0.0);
+    float wsum = 0.0;
+    float change = 0.0;   // summed brightness change over the 3x3 patch
+    for (int dy = -2; dy <= 2; ++dy)
+        for (int dx = -2; dx <= 2; ++dx) {
+            ivec2 q = clamp(p + ivec2(dx, dy), ivec2(0), pc.size - 1);
+            vec3 n = texelFetch(cur, q, 0).rgb;
+            float yn = lumaOf(n);
+            float gn = sqrt(max(yn, 0.0));
+            float dg = (gn - gc) / pc.sigma;
+            float w = exp(-dg * dg);
+            csum += w * (n - vec3(yn));
+            wsum += w;
+            if (pc.fresh == 0 && abs(dx) <= 1 && abs(dy) <= 1)
+                change += gn - sqrt(max(lumaOf(texelFetch(hist, q, 0).rgb), 0.0));
+        }
+    vec3 clean = vec3(yc) + csum / wsum;
+    if (pc.fresh == 0) {
+        vec3 h = texelFetch(hist, p, 0).rgb;
+        float k = clamp(abs(change / 9.0) / pc.threshold, pc.keepMin, 1.0);
+        clean = h + k * (clean - h);
+    }
+    imageStore(dst, p, vec4(max(clean, 0.0), c.a));
+}

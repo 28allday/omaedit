@@ -1,0 +1,13 @@
+#version 450
+// A picture as it is held: straight linear RGBA floats, one texel each, at
+// its own size (for measuring; the preview is the picture to look at).
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(binding = 0) uniform sampler2D picture;
+layout(binding = 1, std430) buffer Out { vec4 pixels[]; } outBuf;
+layout(push_constant) uniform Push { ivec2 size; } pc;
+
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    if (p.x >= pc.size.x || p.y >= pc.size.y) return;
+    outBuf.pixels[p.y * pc.size.x + p.x] = texelFetch(picture, p, 0);
+}

@@ -1,0 +1,32 @@
+#version 450
+// Captured 8-bit frame (any swizzle the VkFormat already resolves) -> linear RGBA32F.
+#extension GL_GOOGLE_include_directive : enable
+#include "common.glsl"
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(binding = 0) uniform sampler2D src;
+layout(binding = 1, rgba32f) uniform writeonly image2D dst;
+layout(push_constant) uniform Push { ivec2 size; int flags; } pc; // bits: opaque, premultiplied, limited RGB, encoded alpha, inverted rows; bits 5..7: display transform; bit 8: kept encoded
+
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    if (p.x >= pc.size.x || p.y >= pc.size.y) return;
+    int transform = (pc.flags >> 5) & 7;
+    ivec2 rawSize = (transform & 1) != 0 ? pc.size.yx : pc.size;
+    ivec2 q = p;
+    if ((transform & 4) != 0) q.x = pc.size.x - 1 - q.x;
+    ivec2 sampleAt = q;
+    switch (transform & 3) {
+    case 1: sampleAt = ivec2(q.y, rawSize.y - 1 - q.x); break;
+    case 2: sampleAt = rawSize - ivec2(1) - q; break;
+    case 3: sampleAt = ivec2(rawSize.x - 1 - q.y, q.x); break;
+    }
+    if ((pc.flags & 16) != 0) sampleAt.y = rawSize.y - 1 - sampleAt.y;
+    vec4 c = texelFetch(src, sampleAt, 0);
+    float a = (pc.flags & 1) != 0 ? 1.0 : c.a;
+    if ((pc.flags & 4) != 0) c.rgb = clamp((c.rgb * 255.0 - 16.0) / 219.0, 0.0, 1.0);
+    if ((pc.flags & 2) != 0) c.rgb = a > 0.0 ? min(vec3(1.0), c.rgb / a) : vec3(0.0);
+    float factor = (pc.flags & 8) != 0 ? a : 1.0;
+    vec4 o = (pc.flags & 256) != 0 ? vec4(c.rgb, a)  // a colour program does the transfer
+           : vec4(factor > 0.0 ? srgbToLinear(c.rgb * factor) / factor : vec3(0.0), a);
+    imageStore(dst, p, o);
+}

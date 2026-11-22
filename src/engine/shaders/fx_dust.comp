@@ -1,0 +1,18 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Dust: up to value 1 dark specks, new every frame, each up to value 0
+// pixels across on a 1080-line picture.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec4 c = at(p);
+    vec3 e = display(c.rgb);
+    int count = int(fxHash(pc.frame, 0, 11) * min(P(1), 100.0) + 0.5);
+    vec2 q = vec2(p) + 0.5;
+    for (int i = 0; i < count; ++i) {
+        vec2 at_ = vec2(fxHash(pc.frame, i, 13) * float(pc.size.x), fxHash(pc.frame, i, 17) * float(pc.size.y));
+        float r = (0.5 + fxHash(pc.frame, i, 19)) * P(0) * float(pc.size.y) / 1080.0;
+        float cover = clamp(r - length(q - at_) + 0.5, 0.0, 1.0);
+        e *= 1.0 - 0.8 * cover;
+    }
+    return vec4(light(e), c.a);
+}

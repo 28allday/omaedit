@@ -1,0 +1,15 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Film grain: noise in the brightness (value 0), dark specks of dust (value
+// 2) and a flicker of the whole picture (value 3), new every frame. (Value 1,
+// the grain's softness, is not used.)
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec4 c = at(p);
+    vec3 e = display(c.rgb);
+    float grain = (fxHash(p.x, p.y, pc.frame) - 0.5) * P(0) * 0.5;
+    float flicker = 1.0 + (fxHash(0, 0, pc.frame * 3 + 1) - 0.5) * P(3) * 0.4;
+    e = (e + grain) * flicker;
+    if (fxHash(p.x / 3, p.y / 3, pc.frame * 7 + 5) < P(2) * 0.002) e *= 0.2;
+    return vec4(light(e), c.a);
+}

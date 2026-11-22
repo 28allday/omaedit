@@ -1,0 +1,21 @@
+module OmaEdit.Deliver
+
+singleton MockDeliver 1.0 MockDeliver.qml
+
+DeliverWorkspace 1.0 DeliverWorkspace.qml
+DeliverPage 1.0 DeliverPage.qml
+PresetBrowser 1.0 PresetBrowser.qml
+PresetRow 1.0 PresetRow.qml
+DeliveryViewer 1.0 DeliveryViewer.qml
+RangeSelector 1.0 RangeSelector.qml
+RenderSettings 1.0 RenderSettings.qml
+SettingRow 1.0 SettingRow.qml
+ValidationSummary 1.0 ValidationSummary.qml
+RenderQueuePanel 1.0 RenderQueuePanel.qml
+QueueRow 1.0 QueueRow.qml
+NamePromptDialog 1.0 NamePromptDialog.qml
+MetadataDialog 1.0 MetadataDialog.qml
+AdvancedDialog 1.0 AdvancedDialog.qml
+LogDialog 1.0 LogDialog.qml
+
+AudioOutputDialog 1.0 AudioOutputDialog.qml

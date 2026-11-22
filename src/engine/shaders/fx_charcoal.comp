@@ -1,0 +1,20 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Charcoal: dark strokes where the brightness changes. Values: 0 and 1 the
+// reach across and down (pixels), 2 contrast, 3 how much colour shows
+// through, 4 set for light strokes on dark.
+#include "fx_common.glsl"
+float l(ivec2 q) { return lumaOf(display(at(q).rgb)); }
+vec4 effect(ivec2 p) {
+    ivec2 sx = ivec2(max(1, int(P(0) * unit() + 0.5)), 0), sy = ivec2(0, max(1, int(P(1) * unit() + 0.5)));
+    // A reach rounded up to a whole pixel of a smaller drawing spans more of
+    // the picture: its changes scaled back to the reach asked for.
+    float fx = min(1.0, max(1.0, floor(P(0) + 0.5)) * unit() / float(sx.x));
+    float fy = min(1.0, max(1.0, floor(P(1) + 0.5)) * unit() / float(sy.y));
+    float gx = (l(p + sx) - l(p - sx)) * fx, gy = (l(p + sy) - l(p - sy)) * fy;
+    float v = 1.0 - clamp(sqrt(gx * gx + gy * gy) * P(2), 0.0, 1.0);
+    if (P(4) > 0.5) v = 1.0 - v;
+    vec4 c = at(p);
+    vec3 e = mix(vec3(v), display(c.rgb) * v, clamp(P(3), 0.0, 1.0));
+    return vec4(light(e), c.a);
+}

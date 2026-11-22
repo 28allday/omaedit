@@ -1,0 +1,195 @@
+#version 450
+// Canvas (linear RGBA32F) -> an output picture in any ColourFormat, through
+// its transfer, primaries, matrix and range (OutputParams in frame.h), into a
+// byte buffer with 4-byte aligned plane strides, at the canvas size or
+// rescaled. One invocation per 8x2 block so every store is a whole uint. The
+// CPU twin in cpu_engine.cpp does the same arithmetic.
+#extension GL_GOOGLE_include_directive : enable
+#include "common.glsl"
+layout(local_size_x = 16, local_size_y = 4) in;  // 16 blocks across: whole 64-byte lines even for 8-bit planar chroma
+layout(binding = 0) uniform sampler2D canvas;
+layout(binding = 1, std430) buffer Out { uint data[]; } outBuf;
+layout(push_constant) uniform Push {
+    ivec2 size;
+    int yStride;     // bytes, room for the block's 8 samples past the width
+    int cStride;     // bytes, the same for chroma
+    int uOffset;     // bytes: the chroma plane (interleaved) or Cb
+    int vOffset;     // bytes: Cr (planar only)
+    ivec2 canvasSize; // pc.size is the output's
+    int format;      // ColourFormat
+    int transfer;    // 0 sRGB curve, 1 PQ, 2 HLG; +4 primaries first
+    float kr, kg, kb, cbDiv, crDiv;
+    float yScale, yOffset, cScale, cOffset;
+    float scale, limit, hlgExponent;
+    float gamut[9];
+    int scaleFilter; // ScaleFilter: 1 bilinear, 2 bicubic, 3 Lanczos, else area
+} pc;
+
+vec3 bilinear(float fx, float fy) {
+    fx = clamp(fx, 0.0, float(pc.canvasSize.x - 1));
+    fy = clamp(fy, 0.0, float(pc.canvasSize.y - 1));
+    int x0 = int(floor(fx)), y0 = int(floor(fy));
+    int x1 = min(x0 + 1, pc.canvasSize.x - 1), y1 = min(y0 + 1, pc.canvasSize.y - 1);
+    float ax = fx - float(x0), ay = fy - float(y0);
+    vec3 top = mix(texelFetch(canvas, ivec2(x0, y0), 0).rgb, texelFetch(canvas, ivec2(x1, y0), 0).rgb, ax);
+    vec3 bottom = mix(texelFetch(canvas, ivec2(x0, y1), 0).rgb, texelFetch(canvas, ivec2(x1, y1), 0).rgb, ax);
+    return mix(top, bottom, ay);
+}
+
+// Canvas light to the output's R'G'B', as outputEncode in frame.h.
+vec3 encode(vec3 c) {
+    if ((pc.transfer & 4) != 0)
+        c = vec3(pc.gamut[0] * c.r + pc.gamut[1] * c.g + pc.gamut[2] * c.b,
+                 pc.gamut[3] * c.r + pc.gamut[4] * c.g + pc.gamut[5] * c.b,
+                 pc.gamut[6] * c.r + pc.gamut[7] * c.g + pc.gamut[8] * c.b);
+    int t = pc.transfer & 3;
+    if (t == 3) return clamp(c, 0.0, 1.0);  // already the output's R'G'B': only its range to keep
+    if (t == 0) return linearToSrgb(c);
+    if (t == 1) {
+        vec3 v = min(c * pc.scale, vec3(pc.limit));
+        return vec3(pqEncode(v.r), pqEncode(v.g), pqEncode(v.b));
+    }
+    vec3 d = clamp(c * pc.scale, 0.0, 1.0);
+    float yd = pc.kr * d.r + pc.kg * d.g + pc.kb * d.b;
+    float f = pow(max(yd, 1e-6), pc.hlgExponent);
+    return vec3(hlgEncode(d.r * f), hlgEncode(d.g * f), hlgEncode(d.b * f));
+}
+
+// Bicubic (radius 2) or Lanczos (radius 3) about canvas position c, the
+// kernel stretched over the footprint f when shrinking; as outputKernel in
+// cpu_engine.cpp, in the same order of sums.
+vec3 kernelSample(vec2 c, vec2 f, bool lanczos) {
+    float radius = lanczos ? 3.0 : 2.0;
+    ivec2 lo = ivec2(floor(c - radius * f)) + 1, hi = ivec2(floor(c + radius * f));
+    vec3 sum = vec3(0.0);
+    float wsum = 0.0;
+    for (int ty = lo.y; ty <= hi.y; ++ty) {
+        float dy = (float(ty) - c.y) / f.y;
+        float wy = lanczos ? lanczosWeight(dy) : cubicWeight(dy);
+        for (int tx = lo.x; tx <= hi.x; ++tx) {
+            float dx = (float(tx) - c.x) / f.x;
+            float w = wy * (lanczos ? lanczosWeight(dx) : cubicWeight(dx));
+            sum += w * texelFetch(canvas, clamp(ivec2(tx, ty), ivec2(0), pc.canvasSize - 1), 0).rgb;
+            wsum += w;
+        }
+    }
+    return max(sum / wsum, vec3(0.0));
+}
+
+// One output pixel: the canvas texel itself at the same size; rescaled, by
+// the chosen filter, by default the mean of ceil(scale)^2 bilinear samples
+// spread over its footprint.
+vec3 fetchEncoded(int x, int y) {
+    x = min(x, pc.size.x - 1);
+    y = min(y, pc.size.y - 1);
+    if (pc.size == pc.canvasSize) return encode(texelFetch(canvas, ivec2(x, y), 0).rgb);
+    vec2 s = vec2(pc.canvasSize) / vec2(pc.size);
+    vec2 c = (vec2(x, y) + 0.5) * s - 0.5;
+    if (pc.scaleFilter == 1) return encode(bilinear(c.x, c.y));
+    if (pc.scaleFilter == 2 || pc.scaleFilter == 3) return encode(kernelSample(c, max(s, vec2(1.0)), pc.scaleFilter == 3));
+    ivec2 k = max(ivec2(1), ivec2(ceil(s - vec2(1e-4))));
+    vec3 sum = vec3(0.0);
+    for (int j = 0; j < k.y; ++j)
+        for (int i = 0; i < k.x; ++i)
+            sum += bilinear((float(x) + (float(i) + 0.5) / float(k.x)) * s.x - 0.5,
+                            (float(y) + (float(j) + 0.5) / float(k.y)) * s.y - 0.5);
+    return encode(sum / float(k.x * k.y));
+}
+
+float luma(vec3 c) { return pc.kr * c.r + pc.kg * c.g + pc.kb * c.b; }
+
+// Halves up, as the CPU twin's roundf (outputCode): GLSL's round() may take
+// them to even, a one-code difference between the engines.
+uint quantise(float v, int top, int shift) { return uint(clamp(int(floor(v + 0.5)), 0, top)) << uint(shift); }
+
+// Four samples as bytes (one uint) or 16-bit words (two) at a 4-byte aligned
+// offset. Fixed sizes throughout: arrays indexed by a running count made one
+// driver keep them in slow scratch memory.
+void put4(int byteOffset, int bytes, uint a, uint b, uint c, uint d) {
+    int word = byteOffset / 4;
+    if (bytes == 1) {
+        outBuf.data[word] = a | (b << 8) | (c << 16) | (d << 24);
+    } else {
+        outBuf.data[word] = a | (b << 16);
+        outBuf.data[word + 1] = c | (d << 16);
+    }
+}
+
+int gTop, gShift;
+uint lumaCode(vec3 c) { return quantise(pc.yOffset + pc.yScale * luma(c), gTop, gShift); }
+// Cb and Cr codes of an (averaged) encoded colour.
+uvec2 chromaCodes(vec3 avg) {
+    float yy = luma(avg);
+    return uvec2(quantise(pc.cOffset + pc.cScale * (avg.b - yy) / pc.cbDiv, gTop, gShift),
+                 quantise(pc.cOffset + pc.cScale * (avg.r - yy) / pc.crDiv, gTop, gShift));
+}
+// Four chroma samples at once: interleaved Cb Cr pairs, or a Cb run and a Cr run.
+void putChroma4(int crow, int cx, int bytes, bool interleaved, uvec2 a, uvec2 b, uvec2 c, uvec2 d) {
+    if (interleaved) {
+        int at = pc.uOffset + crow * pc.cStride + cx * 2 * bytes;
+        put4(at, bytes, a.x, a.y, b.x, b.y);
+        put4(at + 4 * bytes, bytes, c.x, c.y, d.x, d.y);
+    } else {
+        put4(pc.uOffset + crow * pc.cStride + cx * bytes, bytes, a.x, b.x, c.x, d.x);
+        put4(pc.vOffset + crow * pc.cStride + cx * bytes, bytes, a.y, b.y, c.y, d.y);
+    }
+}
+
+void main() {
+    int bx = int(gl_GlobalInvocationID.x) * 8;
+    int by = int(gl_GlobalInvocationID.y) * 2;
+    if (bx >= pc.size.x || by >= pc.size.y) return;
+    int fmt = pc.format;
+    int bits = fmt == 3 || fmt == 4 || fmt == 8 ? 10 : fmt == 5 || fmt == 6 ? 16 : 8;
+    int bytes = bits > 8 ? 2 : 1;
+    gTop = (1 << bits) - 1;
+    gShift = fmt == 3 ? 6 : 0;
+    bool rows2 = by + 1 < pc.size.y;
+
+    // Two rows of eight, flat: one driver here miscompiles a two-dimensional local array.
+    vec3 e[16];
+    for (int i = 0; i < 16; ++i) e[i] = fetchEncoded(bx + (i & 7), by + (i >> 3));
+
+    if (fmt == 7) {  // BGRA, opaque
+        for (int r = 0; r < 2; ++r) {
+            if (r == 1 && !rows2) break;
+            int base = (by + r) * pc.yStride + bx * 4;
+            for (int i = 0; i < 8; ++i) {
+                vec3 c = e[r * 8 + i] * 255.0;
+                outBuf.data[base / 4 + i] = to8(c.b) | (to8(c.g) << 8) | (to8(c.r) << 16) | (255u << 24);
+            }
+        }
+        return;
+    }
+
+    for (int r = 0; r < 2; ++r) {
+        if (r == 1 && !rows2) break;
+        int at = (by + r) * pc.yStride + bx * bytes, k = r * 8;
+        put4(at, bytes, lumaCode(e[k]), lumaCode(e[k + 1]), lumaCode(e[k + 2]), lumaCode(e[k + 3]));
+        put4(at + 4 * bytes, bytes, lumaCode(e[k + 4]), lumaCode(e[k + 5]), lumaCode(e[k + 6]), lumaCode(e[k + 7]));
+    }
+
+    bool halfW = !(fmt == 2 || fmt == 6), halfH = halfW && fmt != 5 && fmt != 8;
+    bool interleaved = fmt == 0 || fmt == 3 || fmt == 5 || fmt == 6;
+    if (halfH) {
+        // 4:2:0: each chroma sample the mean of its 2x2 block, in this order.
+        uvec2 c0 = chromaCodes((e[0] + e[1] + e[8] + e[9]) * 0.25), c1 = chromaCodes((e[2] + e[3] + e[10] + e[11]) * 0.25);
+        uvec2 c2 = chromaCodes((e[4] + e[5] + e[12] + e[13]) * 0.25), c3 = chromaCodes((e[6] + e[7] + e[14] + e[15]) * 0.25);
+        putChroma4(by / 2, bx / 2, bytes, interleaved, c0, c1, c2, c3);
+        return;
+    }
+    for (int r = 0; r < 2; ++r) {
+        if (r == 1 && !rows2) break;
+        int k = r * 8;
+        if (halfW) {  // 4:2:2: the mean of each pair across
+            putChroma4(by + r, bx / 2, bytes, interleaved, chromaCodes((e[k] + e[k + 1]) * 0.5),
+                       chromaCodes((e[k + 2] + e[k + 3]) * 0.5), chromaCodes((e[k + 4] + e[k + 5]) * 0.5),
+                       chromaCodes((e[k + 6] + e[k + 7]) * 0.5));
+        } else {      // 4:4:4: every pixel its own
+            putChroma4(by + r, bx, bytes, interleaved, chromaCodes(e[k]), chromaCodes(e[k + 1]), chromaCodes(e[k + 2]),
+                       chromaCodes(e[k + 3]));
+            putChroma4(by + r, bx + 4, bytes, interleaved, chromaCodes(e[k + 4]), chromaCodes(e[k + 5]),
+                       chromaCodes(e[k + 6]), chromaCodes(e[k + 7]));
+        }
+    }
+}

@@ -1,0 +1,14 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Pixelate: blocks of value 0 × value 1 of the picture's width and height,
+// each the mean of a 4 × 4 grid of samples across it.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec2 block = max(vec2(1.0), floor(vec2(P(0) * float(pc.size.x), P(1) * float(pc.size.y)) + 0.5));
+    vec2 corner = floor((vec2(p) + 0.5) / block) * block;
+    vec4 s = vec4(0.0);
+    for (int j = 0; j < 4; ++j)
+        for (int i = 0; i < 4; ++i)
+            s += assoc(sampleAt(clamp(corner + (vec2(i, j) + 0.5) / 4.0 * block, vec2(0.5), vec2(pc.size) - 0.5)));
+    return straightSample(s / 16.0);
+}

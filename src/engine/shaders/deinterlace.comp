@@ -1,0 +1,67 @@
+#version 450
+// Source field reconstruction. CPU twin: CpuEngine::deinterlace.
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(binding = 0) uniform sampler2D cur;
+layout(binding = 1, rgba32f) uniform writeonly image2D dst;
+layout(binding = 2) uniform sampler2D prev;
+layout(push_constant) uniform Push {
+    ivec2 size;
+    int mode;       // discard, linear, blend, motion adaptive
+    int field;
+    int firstField;
+    int history;
+} pc;
+
+ivec2 point(int x, int y) { return clamp(ivec2(x,y),ivec2(0),pc.size-1); }
+ivec2 rows(int y, int field) {
+    field = min(field,pc.size.y-1);
+    int last = field+2*((pc.size.y-1-field)/2);
+    return clamp(ivec2(y-1,y+1),ivec2(field),ivec2(last));
+}
+vec4 fieldSample(sampler2D image, ivec2 p, int field) {
+    field = min(field,pc.size.y-1);
+    if ((p.y&1) == field) return texelFetch(image,p,0);
+    ivec2 r = rows(p.y,field);
+    return .5*(texelFetch(image,ivec2(p.x,r.x),0)+texelFetch(image,ivec2(p.x,r.y),0));
+}
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    if (any(greaterThanEqual(p,pc.size))) return;
+    vec4 spatial = fieldSample(cur,p,pc.field);
+    ivec2 r = rows(p.y,pc.field);
+    if (pc.mode == 1) {
+        int field = min(pc.field,pc.size.y-1);
+        int row = clamp((p.y/2)*2+field,field,field+2*((pc.size.y-1-field)/2));
+        spatial = texelFetch(cur,ivec2(p.x,row),0);
+    } else if (pc.mode == 3) {
+        vec4 other = pc.firstField != 0 && pc.history != 0 ? fieldSample(prev,p,1-pc.field) : fieldSample(cur,p,1-pc.field);
+        spatial = .5*(spatial+other);
+    } else if (pc.mode == 4 && (p.y&1) != pc.field) {
+        float best = 1e10;
+        const int offsets[5] = int[5](0,-1,1,-2,2);
+        for (int n=0;n<5;++n) {
+            int dx = offsets[n];
+            float score = .001*abs(dx);
+            for (int tap=-1;tap<=1;++tap) {
+                vec3 difference = abs(texelFetch(cur,point(p.x+tap-dx,r.x),0).rgb - texelFetch(cur,point(p.x+tap+dx,r.y),0).rgb);
+                score += difference.r; score += difference.g; score += difference.b;
+            }
+            if (score < best) {
+                best = score;
+                spatial = .5*(texelFetch(cur,point(p.x-dx,r.x),0)+texelFetch(cur,point(p.x+dx,r.y),0));
+            }
+        }
+        if (pc.history != 0) {
+            float change = 0;
+            for (int dy=-2;dy<=2;++dy) for (int dx=-1;dx<=1;++dx) {
+                ivec2 q = point(p.x+dx,p.y+dy);
+                vec4 d = abs(texelFetch(cur,q,0)-texelFetch(prev,q,0));
+                change = max(change,max(max(d.r,d.g),max(d.b,d.a)));
+            }
+            float motion = clamp((change-.01)/.03,0.,1.);
+            vec4 c = texelFetch(cur,p,0);
+            spatial = c+motion*(spatial-c);
+        }
+    }
+    imageStore(dst,p,spatial);
+}

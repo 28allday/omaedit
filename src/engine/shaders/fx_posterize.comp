@@ -1,0 +1,9 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Posterize: each display value to the nearest of `levels` steps (value 0).
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec4 c = at(p);
+    float n = max(2.0, floor(P(0) + 0.5)) - 1.0;
+    return vec4(light(floor(display(c.rgb) * n + 0.5) / n), c.a);
+}

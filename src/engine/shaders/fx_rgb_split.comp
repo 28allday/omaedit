@@ -1,0 +1,10 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// RGB split: red moved one way and blue the other, by value 0 down and
+// value 1 across, each a tenth of the picture's height or width at 1.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec2 q = vec2(p) + 0.5, d = vec2(P(1) * 0.1 * float(pc.size.x), P(0) * 0.1 * float(pc.size.y));
+    vec4 r = sampleAt(q - d), g = sampleAt(q), b = sampleAt(q + d);
+    return vec4(r.r, g.g, b.b, max(max(r.a, g.a), b.a));
+}

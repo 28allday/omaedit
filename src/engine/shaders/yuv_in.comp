@@ -1,0 +1,131 @@
+#version 450
+// A Y'CbCr frame (uploaded as rows of bytes: Y, then chroma; see yuvRows in
+// frame.h; above 8 bits two bytes per sample) -> linear RGBA32F, through its
+// transfer (InputParams in frame.h). Chroma is interpolated bilinearly from
+// its own grid. The CPU twin in cpu_engine.cpp does the same arithmetic.
+#extension GL_GOOGLE_include_directive : enable
+#include "common.glsl"
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(binding = 0) uniform sampler2D bytes;   // R8: one texel per byte
+layout(binding = 1, rgba32f) uniform writeonly image2D dst;
+layout(push_constant) uniform Push {
+    ivec2 size;
+    int format;      // 0 NV12, 1 I420, 2 YUY2, 3 I422, 4 I444
+    int fullRange;
+    float kr;
+    float kb;
+    int interlaced;
+    int alphaRow;    // -1 for opaque, else first row of full-size alpha
+    int premultiplied;
+    int linearAlpha;
+    int depth;       // bits per sample; above 8, little-endian words
+    int shift;       // a word's code sits this many bits up (P010: 6)
+    int kind;        // 0 sRGB curve, 1 PQ, 2 HLG, 3 kept encoded
+    int wide;        // BT.2020 primaries: through gamut into BT.709
+    float scale;     // display light -> canvas units
+    float gamma1;    // HLG system gamma - 1
+    float gamut[9];
+    int chromaLeft;  // chroma level with the left luma sample, not midway (frame.h chromaColumn)
+    int reduce;      // 1, or 2 or 4: each stored pixel the mean of that block (frame.h yuvReduce)
+} pc;
+
+// Sample x of row y: a byte, or the word of two.
+float byteAt(int x, int y) {
+    if (pc.depth <= 8) return floor(texelFetch(bytes, ivec2(x, y), 0).r * 255.0 + 0.5);
+    uint lo = uint(floor(texelFetch(bytes, ivec2(x * 2, y), 0).r * 255.0 + 0.5));
+    uint hi = uint(floor(texelFetch(bytes, ivec2(x * 2 + 1, y), 0).r * 255.0 + 0.5));
+    return float((lo | (hi << 8)) >> uint(pc.shift));
+}
+vec3 toLinear(vec3 e) {
+    if (pc.kind == 3) return e;  // kept encoded: a colour program does the rest
+    vec3 o;
+    if (pc.kind == 0) o = srgbToLinear(e);
+    else if (pc.kind == 1) o = vec3(pqDecode(e.r), pqDecode(e.g), pqDecode(e.b)) * pc.scale;
+    else {
+        vec3 s = vec3(hlgDecode(e.r), hlgDecode(e.g), hlgDecode(e.b));
+        float ys = 0.2627 * s.r + 0.678 * s.g + 0.0593 * s.b;
+        float f = ys > 0.0 ? pow(ys, pc.gamma1) * pc.scale : 0.0;
+        o = s * f;
+    }
+    if (pc.wide != 0) {
+        vec3 c = o;
+        o = vec3(pc.gamut[0] * c.r + pc.gamut[1] * c.g + pc.gamut[2] * c.b,
+                 pc.gamut[3] * c.r + pc.gamut[4] * c.g + pc.gamut[5] * c.b,
+                 pc.gamut[6] * c.r + pc.gamut[7] * c.g + pc.gamut[8] * c.b);
+    }
+    return o;
+}
+
+// Chroma sample (cb, cr) at chroma-grid position (cx, cy), clamped.
+vec2 chromaAt(int cx, int cy) {
+    int cw = pc.format == 4 ? pc.size.x : (pc.size.x + 1) / 2, ch = (pc.size.y + 1) / 2;
+    cx = clamp(cx, 0, cw - 1);
+    if (pc.format == 2) {  // YUY2: chroma on every row
+        cy = clamp(cy, 0, pc.size.y - 1);
+        return vec2(byteAt(cx * 4 + 1, cy), byteAt(cx * 4 + 3, cy));
+    }
+    if (pc.format >= 3) {  // I422/I444: chroma planes on every row
+        cy = clamp(cy, 0, pc.size.y - 1);
+        return vec2(byteAt(cx, pc.size.y + cy), byteAt(cx, pc.size.y * 2 + cy));
+    }
+    cy = clamp(cy, 0, ch - 1);
+    if (pc.format == 0) return vec2(byteAt(cx * 2, pc.size.y + cy), byteAt(cx * 2 + 1, pc.size.y + cy));
+    return vec2(byteAt(cx, pc.size.y + cy), byteAt(cx, pc.size.y + ch + cy));
+}
+
+// Pixel p of the picture: straight colour, converted, and its alpha.
+vec4 pixelAt(ivec2 p) {
+    float y = pc.format == 2 ? byteAt(p.x * 2, p.y) : byteAt(p.x, p.y);
+    // Across, chroma sits midway between its two luma samples or level with
+    // the left one; down (4:2:0), midway.
+    float fx = pc.format == 4 ? float(p.x) : pc.chromaLeft != 0 ? float(p.x) * 0.5 : (float(p.x) + 0.5) * 0.5 - 0.5;
+    int ch = (pc.size.y+1)/2;
+    bool fields = pc.format < 2 && ch > 1 && pc.interlaced != 0;
+    float fy = pc.format >= 2 ? float(p.y) : (float(fields ? p.y/2 : p.y) + 0.5) * 0.5 - 0.5;
+    int x0 = int(floor(fx)), localY = int(floor(fy));
+    float tx = fx - float(x0), ty = fy - float(localY);
+    int parity = p.y&1, last = (ch-1-parity)/2;
+    int y0 = fields ? 2*clamp(localY,0,last)+parity : localY;
+    int y1 = fields ? 2*clamp(localY+1,0,last)+parity : localY+1;
+    vec2 c = mix(mix(chromaAt(x0, y0), chromaAt(x0 + 1, y0), tx),
+                 mix(chromaAt(x0, y1), chromaAt(x0 + 1, y1), tx), ty);
+    bool full = pc.fullRange != 0;
+    float s = float(1 << (pc.depth - 8)), top = float((1 << pc.depth) - 1), mid = float(1 << (pc.depth - 1));
+    float Y = full ? y / top : (y - 16.0 * s) / (219.0 * s);
+    float Pb = full ? (c.x - mid) / top : (c.x - 128.0 * s) / (224.0 * s);
+    float Pr = full ? (c.y - mid) / top : (c.y - 128.0 * s) / (224.0 * s);
+    float R = Y + 2.0 * (1.0 - pc.kr) * Pr;
+    float B = Y + 2.0 * (1.0 - pc.kb) * Pb;
+    float G = (Y - pc.kr * R - pc.kb * B) / (1.0 - pc.kr - pc.kb);
+    // Kept encoded (for a colour program): what the codes say, beyond 0..1 too.
+    vec3 rgb = pc.kind == 3 ? vec3(R, G, B) : clamp(vec3(R, G, B), 0.0, 1.0);
+    float a = pc.alphaRow < 0 ? 1.0 : byteAt(p.x, pc.alphaRow + p.y) / top;
+    if (pc.premultiplied != 0) rgb = a > 0.0 ? min(vec3(1.0), rgb / a) : vec3(0.0);
+    float factor = pc.linearAlpha != 0 ? 1.0 : a;
+    return vec4(factor > 0.0 ? toLinear(rgb * factor) / factor : vec3(0.0), a);
+}
+
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    if (pc.reduce <= 1) {
+        if (p.x >= pc.size.x || p.y >= pc.size.y) return;
+        imageStore(dst, p, pixelAt(p));
+        return;
+    }
+    // Reduced: the mean of the block, colour weighted by alpha (the twin
+    // adds them up in the same order).
+    ivec2 first = p * pc.reduce;
+    if (first.x >= pc.size.x || first.y >= pc.size.y) return;
+    vec3 colour = vec3(0.0);
+    float alpha = 0.0, count = 0.0;
+    for (int j = 0; j < pc.reduce; ++j)
+        for (int i = 0; i < pc.reduce; ++i) {
+            ivec2 q = first + ivec2(i, j);
+            if (q.x >= pc.size.x || q.y >= pc.size.y) continue;
+            vec4 v = pixelAt(q);
+            colour += v.rgb * v.a;
+            alpha += v.a;
+            count += 1.0;
+        }
+    imageStore(dst, p, vec4(alpha > 0.0 ? colour / alpha : vec3(0.0), alpha / count));
+}

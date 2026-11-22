@@ -1,0 +1,12 @@
+module OmaEdit.App
+FileBrowser 1.0 FileBrowser.qml
+ViewerPlaybackDialog 1.0 ViewerPlaybackDialog.qml
+MissingProjectDialog 1.0 MissingProjectDialog.qml
+CloseProjectDialog 1.0 CloseProjectDialog.qml
+
+AppTitleBar 1.0 AppTitleBar.qml
+WorkspaceBar 1.0 WorkspaceBar.qml
+StatusBar 1.0 StatusBar.qml
+
+BackgroundTasks 1.0 BackgroundTasks.qml
+InfoArea 1.0 InfoArea.qml

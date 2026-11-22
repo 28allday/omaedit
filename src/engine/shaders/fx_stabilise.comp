@@ -1,0 +1,12 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Stabilise: one frame's correction from the motion analysis, as the
+// stabiliser applies it: each pixel taken from the picture turned by the
+// angle (value 2, radians) and zoomed (value 3, percent) about the centre,
+// less the shift (values 0 and 1, pixels). Outside the picture: transparent.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    float z = 1.0 - P(3) / 100.0, zc = z * cos(-P(2)), zs = z * sin(-P(2));
+    vec2 c = vec2(pc.size) * 0.5, d = vec2(p) + 0.5 - c;
+    return sampleAt(vec2(zc * d.x + zs * d.y + c.x - P(0), -zs * d.x + zc * d.y + c.y - P(1)));
+}

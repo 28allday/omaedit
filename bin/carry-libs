@@ -1,0 +1,84 @@
+#!/usr/bin/env sh
+set -eu
+# What pacman and ldd print is read below, whatever language the computer speaks.
+export LC_ALL=C
+
+# The libraries the program links whose file names change when the system
+# updates them, copied as Arch Linux packaged them to travel with the package in
+# /usr/lib/omaedit/lib (carried.pri has the program look there first), with
+# their licences and what they are. Run after bin/build, for the package.
+#
+# Not here, and still the system's: Qt, the Vulkan loader, lz4 and the other
+# libraries whose names have not changed in years, and SPIRV-Tools (a library
+# with no version in its name), which the graphics drivers load into the same
+# program. glslang, which uses it, is linked into the program itself.
+
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+BIN="$ROOT/build/omaedit"
+OUT="$ROOT/build/carried"
+PACKAGES="opencv opencolorio openexr imath opentimelineio yaml-cpp pystring minizip-ng openjph rubberband vid.stab"
+[ -x "$BIN" ] || { echo "No $BIN: run bin/build first" >&2; exit 1; }
+
+carried() { case " $PACKAGES " in *" $1 "*) return 0 ;; esac; return 1; }
+needed() { readelf -d "$1" | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p'; }
+
+rm -rf "$OUT"
+mkdir -p "$OUT/lib" "$OUT/licenses"
+found=""
+# Each is read as the system has it, not where the program would find it: on
+# a computer with OmaEdit installed the program looks in that package's
+# /usr/lib/omaedit/lib first, and those are OmaEdit's, not Arch's packages.
+for name in $(needed "$BIN"); do
+  file="/usr/lib/$name"
+  [ -e "$file" ] || continue
+  package=$(pacman -Qqo "$file")
+  carried "$package" || continue
+  cp -L "$file" "$OUT/lib/$name"
+  case " $found " in *" $package "*) ;; *) found="$found $package" ;; esac
+done
+for package in $PACKAGES; do
+  case " $found " in *" $package "*) ;; *) echo "The program links nothing of $package" >&2; exit 1 ;; esac
+done
+
+# Each carried library finds the carried libraries it uses only because the
+# program links them too: one that it does not would come from the system.
+for file in "$OUT"/lib/*; do
+  for name in $(needed "$file"); do
+    [ -e "$OUT/lib/$name" ] && continue
+    [ -e "/usr/lib/$name" ] || continue
+    package=$(pacman -Qqo "/usr/lib/$name")
+    if carried "$package"; then
+      echo "$(basename "$file") uses $name of $package, which the program does not link: add it in carried.pri" >&2
+      exit 1
+    fi
+  done
+done
+
+# Their licences: every licence file the package installs, wherever it put them
+# (OpenCV's are in a folder named opencv5, with those of the code built into it:
+# Intel's IPP, protobuf and the rest). A package with no folder of its own name
+# keeps its main licence in Arch's shared folder of common ones.
+for package in $PACKAGES; do
+  mkdir -p "$OUT/licenses/$package"
+  for file in $(pacman -Qlq "$package" | grep '^/usr/share/licenses/.*[^/]$'); do
+    if [ -e "$OUT/licenses/$package/$(basename "$file")" ]; then
+      echo "$package has two licence files named $(basename "$file")" >&2
+      exit 1
+    fi
+    cp -L "$file" "$OUT/licenses/$package/"
+  done
+  if [ ! -d "/usr/share/licenses/$package" ]; then
+    for licence in $(pacman -Qi "$package" | sed -n 's/^Licenses *: //p'); do
+      case "$licence" in AND|OR|WITH) continue ;; esac
+      cp -L "/usr/share/licenses/spdx/$licence.txt" "$OUT/licenses/$package/"
+    done
+  fi
+  [ -n "$(ls "$OUT/licenses/$package")" ] || { echo "No licence found for $package" >&2; exit 1; }
+done
+
+{
+  echo "Carried beside OmaEdit in /usr/lib/omaedit/lib, as Arch Linux packaged them"
+  echo "(build recipes: https://gitlab.archlinux.org/archlinux/packaging/packages/<name>):"
+  for package in $PACKAGES; do pacman -Q "$package"; done
+} > "$OUT/SOURCE"
+echo "Carried $(ls "$OUT/lib" | wc -l) libraries into $OUT/lib"

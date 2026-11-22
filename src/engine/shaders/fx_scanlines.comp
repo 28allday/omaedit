@@ -1,0 +1,11 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Scanlines: every other pair of rows dimmed to a quarter, at about 540
+// lines for the picture's height.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec4 c = at(p);
+    int pitch = max(2, pc.size.y / 270);
+    bool dark = (p.y / (pitch / 2)) % 2 == 1;
+    return vec4(dark ? c.rgb * 0.25 : c.rgb, c.a);
+}

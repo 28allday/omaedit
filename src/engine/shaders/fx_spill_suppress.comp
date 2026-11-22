@@ -1,0 +1,12 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Spill suppress: green (value 0 = 0) or blue (1) held at the larger of the
+// other two channels, on display values.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec4 c = at(p);
+    vec3 e = display(c.rgb);
+    if (P(0) < 0.5) e.g = min(e.g, max(e.r, e.b));
+    else e.b = min(e.b, max(e.r, e.g));
+    return vec4(light(e), c.a);
+}

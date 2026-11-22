@@ -1,0 +1,33 @@
+module OmaEdit.Media
+
+singleton MockMedia 1.0 MockMedia.qml
+
+MediaWorkspace 1.0 MediaWorkspace.qml
+MediaPage 1.0 MediaPage.qml
+StorageSidebar 1.0 StorageSidebar.qml
+SidebarSection 1.0 SidebarSection.qml
+SidebarRow 1.0 SidebarRow.qml
+SectionTitle 1.0 SectionTitle.qml
+MediaToolbar 1.0 MediaToolbar.qml
+FilterBar 1.0 FilterBar.qml
+MediaBrowser 1.0 MediaBrowser.qml
+MediaCard 1.0 MediaCard.qml
+MediaListRow 1.0 MediaListRow.qml
+PagerBar 1.0 PagerBar.qml
+SourcePreview 1.0 SourcePreview.qml
+ClipLogger 1.0 ClipLogger.qml
+AudioWaveform 1.0 AudioWaveform.qml
+MetadataInspector 1.0 MetadataInspector.qml
+MetaRow 1.0 MetaRow.qml
+RemoveClipDialog 1.0 RemoveClipDialog.qml
+SearchRules 1.0 SearchRules.qml
+CollectionControls 1.0 CollectionControls.qml
+MediaNameDialog 1.0 MediaNameDialog.qml
+MediaOperations 1.0 MediaOperations.qml
+RelinkControls 1.0 RelinkControls.qml
+ProxyControls 1.0 ProxyControls.qml
+ClipAttributes 1.0 ClipAttributes.qml
+MetadataControls 1.0 MetadataControls.qml
+FilmstripRow 1.0 FilmstripRow.qml
+CompareSources 1.0 CompareSources.qml
+SourceTools 1.0 SourceTools.qml

@@ -1,0 +1,22 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Soft glow: the bright parts blurred and screened over the picture. Value 0:
+// the blur's reach (sigma 4 % of the height at 1), 1: the glow's strength,
+// 2: how much of the brightness range glows (1 all of it). Passes: the
+// bright part, across, down, the mix.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec2 q = vec2(p) + 0.5;
+    float sigma = P(0) * 0.04 * float(pc.size.y);
+    if (pc.pass == 0) {
+        vec4 c = at(p);
+        vec3 e = display(c.rgb);
+        float t = clamp((lumaOf(e) - (1.0 - P(2))) / max(P(2), 0.01), 0.0, 1.0);
+        return vec4(light(e * t), c.a);
+    }
+    if (pc.pass == 1) return straightSample(gaussLine(q, vec2(1.0, 0.0), sigma));
+    if (pc.pass == 2) return straightSample(gaussLine(q, vec2(0.0, 1.0), sigma));
+    vec4 c = texelFetch(aux, p, 0), g = at(p);
+    vec3 e = display(c.rgb), ge = display(g.rgb) * P(1) * 2.0;
+    return vec4(light(1.0 - (1.0 - e) * (1.0 - clamp(ge, 0.0, 1.0))), c.a);
+}

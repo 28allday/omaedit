@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="/agent">
+    <file alias="guide.md">../docs-cli.md</file>
+  </qresource>
+</RCC>

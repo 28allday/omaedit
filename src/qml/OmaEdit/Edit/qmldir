@@ -1,0 +1,24 @@
+module OmaEdit.Edit
+
+singleton MockProject 1.0 MockProject.qml
+
+EditWorkspace 1.0 EditWorkspace.qml
+MediaPanel 1.0 MediaPanel.qml
+ProgramMonitor 1.0 ProgramMonitor.qml
+InspectorPanel 1.0 InspectorPanel.qml
+InspectorSection 1.0 InspectorSection.qml
+PropertyRow 1.0 PropertyRow.qml
+PanelHeader 1.0 PanelHeader.qml
+TimelinePanel 1.0 TimelinePanel.qml
+TimelineClip 1.0 TimelineClip.qml
+EditToolbar 1.0 EditToolbar.qml
+TimeRuler 1.0 TimeRuler.qml
+Playhead 1.0 Playhead.qml
+TrackHeader 1.0 TrackHeader.qml
+AudioMeters 1.0 AudioMeters.qml
+
+EditAnimation 1.0 EditAnimation.qml
+MotionPresets 1.0 MotionPresets.qml
+VideoEffectStack 1.0 VideoEffectStack.qml
+EffectMaskOverlay 1.0 EffectMaskOverlay.qml
+VideoEffectsWindow 1.0 VideoEffectsWindow.qml

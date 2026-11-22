@@ -1,0 +1,42 @@
+// The editor's video effects the engine draws, one per line:
+//   EFFECT(Name, file stem, passes)
+// Each has a compute shader shaders/fx_<stem>.comp and a CPU twin
+// fx_<stem>() in effects/fx_<stem>.cpp doing the same arithmetic. Passes run in
+// turn (pass 0 reads the step's input, later ones the previous pass); every
+// pass also sees the step's input as `aux`. Values: VideoFilter::values, as
+// the editor stores the effect's controls; `frame` is the clip's frame.
+// Append only: an effect's position is its number in FilterParams::kind.
+EFFECT(Invert, invert, 1)
+EFFECT(BlackWhite, black_white, 1)
+EFFECT(Sepia, sepia, 1)
+EFFECT(Posterize, posterize, 1)
+EFFECT(Threshold, threshold, 1)
+EFFECT(Vignette, vignette, 1)
+EFFECT(Letterbox, letterbox, 1)
+EFFECT(Scanlines, scanlines, 1)
+EFFECT(Mirror, mirror, 1)
+EFFECT(RgbSplit, rgb_split, 1)
+EFFECT(Pixelate, pixelate, 1)
+EFFECT(Strobe, strobe, 1)
+EFFECT(Wave, wave, 1)
+EFFECT(CornerPin, corner_pin, 1)
+EFFECT(Fisheye, fisheye, 1)
+EFFECT(SpillSuppress, spill_suppress, 1)
+EFFECT(DirectionalBlur, directional_blur, 1)
+EFFECT(Glow, glow, 3)
+EFFECT(SoftGlow, soft_glow, 4)
+EFFECT(EdgeGlow, edge_glow, 1)
+EFFECT(Emboss, emboss, 1)
+EFFECT(Cartoon, cartoon, 1)
+EFFECT(Charcoal, charcoal, 1)
+EFFECT(Halftone, halftone, 1)
+EFFECT(FilmGrain, film_grain, 1)
+EFFECT(OldFilm, old_film, 1)
+EFFECT(Dust, dust, 1)
+EFFECT(Scratches, scratches, 1)
+EFFECT(Glitch, glitch, 1)
+EFFECT(Lens, lens, 1)
+EFFECT(Stabilise, stabilise, 1)
+EFFECT(LumaBand, luma_band, 1)
+EFFECT(WorkingColour, working_colour, 1)
+EFFECT(MatteRefine, matte_refine, 4)

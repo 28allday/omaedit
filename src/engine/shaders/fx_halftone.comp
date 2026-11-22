@@ -1,0 +1,23 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Colour halftone: cyan, magenta and yellow dots on white, each ink's dots on
+// its own turned grid. Value 0: dot size (cells 3 % of the height at 1),
+// 1–3: the cyan, magenta and yellow grids' turns (a half turn at 1).
+#include "fx_common.glsl"
+float dot_(vec2 q, float ink, float turn, float cell) {
+    float a = turn * 3.14159265;
+    vec2 r = vec2(cos(a) * q.x + sin(a) * q.y, -sin(a) * q.x + cos(a) * q.y);
+    vec2 f = r / cell - floor(r / cell) - 0.5;
+    float d = length(f) * cell, radius = sqrt(clamp(ink, 0.0, 1.0)) * cell * 0.70710678;
+    // A soft one-pixel edge; a dot smaller than a pixel fades by its size
+    // rather than showing as half a pixel of ink.
+    return clamp(radius - d + 0.5, 0.0, 1.0) * min(1.0, 2.0 * radius);
+}
+vec4 effect(ivec2 p) {
+    vec4 c = at(p);
+    vec3 e = display(c.rgb);
+    float cell = max(2.0, P(0) * 0.03 * float(pc.size.y));
+    vec2 q = vec2(p) + 0.5;
+    vec3 o = vec3(1.0 - dot_(q, 1.0 - e.r, P(1), cell), 1.0 - dot_(q, 1.0 - e.g, P(2), cell), 1.0 - dot_(q, 1.0 - e.b, P(3), cell));
+    return vec4(light(o), c.a);
+}

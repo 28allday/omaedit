@@ -1,0 +1,14 @@
+/build/
+/pkg/
+/pkgbuild/pkg/
+/pkgbuild/src/
+/pkgbuild/*.tar.gz
+/pkgbuild/*.bin
+*.pkg.tar.*
+*.src.tar.*
+*.o
+*.moc
+moc_*.cpp
+qrc_*.cpp
+.qmake.stash
+Makefile

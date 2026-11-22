@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+"""Build the OpenAPV encoder under build/deps/openapv; no system install.
+
+FFmpeg decodes APV but has no APV encoder, so APV exports pipe pictures into
+OpenAPV's command-line encoder. The encoder links liboapv statically, so the
+one executable plus its BSD-3-Clause licence is everything a package ships.
+OMAEDIT_OPENAPV_ARCHIVE names an already downloaded release archive (the
+package build passes makepkg's copy); its SHA-256 is checked the same way.
+"""
+import hashlib
+import os
+import pathlib
+import shutil
+import subprocess
+import tarfile
+import urllib.request
+
+VERSION = "1.1.3.0"
+SHA256 = "38f841ce44e80c40b682a5323b4f3ebc6e339b6071965bc1c705a17d46ab2fc8"
+URL = f"https://github.com/AcademySoftwareFoundation/openapv/archive/refs/tags/v{VERSION}.tar.gz"
+
+root = pathlib.Path(__file__).resolve().parents[1]
+target = root / "build/deps/openapv"
+work = target / "work"
+work.mkdir(parents=True, exist_ok=True)
+archive = pathlib.Path(os.environ.get("OMAEDIT_OPENAPV_ARCHIVE") or work / f"openapv-v{VERSION}.tar.gz")
+if not archive.exists():
+    temporary = pathlib.Path(str(archive) + ".part")
+    urllib.request.urlretrieve(URL, temporary)
+    temporary.replace(archive)
+digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+if digest != SHA256:
+    raise SystemExit(f"{archive.name}: SHA-256 {digest} does not match {SHA256}")
+source = work / f"openapv-{VERSION}"
+if not source.exists():
+    with tarfile.open(archive) as tar:
+        tar.extractall(work, filter="data")
+build = work / "build"
+jobs = os.environ.get("OMAEDIT_BUILD_JOBS", str(os.cpu_count() or 1))
+subprocess.run(["cmake", "-S", str(source), "-B", str(build), "-DCMAKE_BUILD_TYPE=Release",
+                f"-DCMAKE_INSTALL_PREFIX={target}", "-DCMAKE_INSTALL_LIBDIR=lib",
+                "-DENABLE_TESTS=OFF", "-DOAPV_APP_STATIC_BUILD=ON"], check=True)
+subprocess.run(["cmake", "--build", str(build), "--target", "oapv_app_enc", "-j", jobs], check=True)
+encoder = next(build.rglob("oapv_app_enc"))
+(target / "bin").mkdir(exist_ok=True)
+shutil.copy2(encoder, target / "bin/oapv_app_enc")
+licences = target / "share/licenses/openapv"
+licences.mkdir(parents=True, exist_ok=True)
+shutil.copy2(source / "LICENSE", licences / "LICENSE")
+print(f"OpenAPV {VERSION} encoder ready: {target / 'bin/oapv_app_enc'}")

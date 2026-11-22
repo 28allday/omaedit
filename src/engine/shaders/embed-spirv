@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+# Part of the build: compiles one engine compute shader to SPIR-V and writes it
+# as a C++ array, so the program carries its shaders. Usage:
+#   embed-spirv <glslangValidator> <shader.comp> <out.cpp>
+set -eu
+GLSLANG="$1"; IN="$2"; OUT="$3"
+NAME="spirv_$(basename "$IN" .comp)"
+mkdir -p "$(dirname "$OUT")"
+"$GLSLANG" -V --target-env vulkan1.2 --vn "$NAME" -o "$OUT.inc" "$IN" > "$OUT.log" || { cat "$OUT.log" >&2; exit 1; }
+{
+  echo '#include <cstddef>'
+  echo '#include <cstdint>'
+  # glslang's array is const, so local to its file unless declared extern first.
+  echo "extern const uint32_t $NAME[];"
+  echo "extern const size_t ${NAME}_size;"
+  grep -v 'pragma once' "$OUT.inc"
+  echo "const size_t ${NAME}_size = sizeof($NAME);"
+} > "$OUT"
+rm -f "$OUT.inc" "$OUT.log"

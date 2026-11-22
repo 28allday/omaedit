@@ -1,0 +1,33 @@
+module OmaEdit.Audio
+
+singleton MockAudio 1.0 MockAudio.qml
+
+AudioWorkspace 1.0 AudioWorkspace.qml
+AudioPage 1.0 AudioPage.qml
+SoundLibrary 1.0 SoundLibrary.qml
+SoundRow 1.0 SoundRow.qml
+AudioViewer 1.0 AudioViewer.qml
+HMeter 1.0 HMeter.qml
+VMeter 1.0 VMeter.qml
+Knob 1.0 Knob.qml
+Fader 1.0 Fader.qml
+AudioToolbar 1.0 AudioToolbar.qml
+AudioTimeline 1.0 AudioTimeline.qml
+SoundGesture 1.0 SoundGesture.qml
+TrackGroupHeader 1.0 TrackGroupHeader.qml
+AudioTrackControl 1.0 AudioTrackControl.qml
+AudioClipItem 1.0 AudioClipItem.qml
+MasterRow 1.0 MasterRow.qml
+MixerPanel 1.0 MixerPanel.qml
+ChannelStrip 1.0 ChannelStrip.qml
+InsertList 1.0 InsertList.qml
+EffectsTab 1.0 EffectsTab.qml
+AdrTab 1.0 AdrTab.qml
+LoudnessTab 1.0 LoudnessTab.qml
+LoudnessGraph 1.0 LoudnessGraph.qml
+AudioInspector 1.0 AudioInspector.qml
+EqGraph 1.0 EqGraph.qml
+SpectrumView 1.0 SpectrumView.qml
+
+MixTools 1.0 MixTools.qml
+AudioTimingDialog 1.0 AudioTimingDialog.qml

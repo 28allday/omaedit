@@ -1,0 +1,236 @@
+#version 450
+// One operation of a grade plan (grade.h), word for word with its CPU twin
+// (runPlan in cpu_engine.cpp and the functions in grade.h). Pictures are
+// straight linear RGBA; masks sit in red.
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(binding = 0, rgba32f) uniform readonly image2D pictureA;
+layout(binding = 1, rgba32f) uniform readonly image2D pictureB;
+layout(binding = 2, rgba32f) uniform readonly image2D pictureM;
+layout(binding = 3) uniform sampler2D table;  // R32F, one row: a node's or a mask's numbers
+layout(binding = 4, rgba32f) uniform writeonly image2D target;
+layout(push_constant) uniform Push {
+    ivec2 size;
+    int kind;     // GradeOp::Kind
+    int channel;
+    float amount;
+    int has;      // 1: a, 2: b, 4: mask
+} pc;
+
+const int Correct = 0, Box = 1, Detail = 2, Program = 3, Mask = 4, Grow = 5, Blur = 6, Key = 7, Mix = 8, Sum = 9,
+          Split = 10, Copy = 11, Clear = 12, MatteView = 13, People = 14;
+// grade.h's node:: and mask:: offsets.
+const int Lift = 0, Gamma = 3, Gain = 6, Offset = 9, Contrast = 12, Pivot = 13, Exposure = 14, Black = 15, White = 16,
+          Angle = 17, Saturation = 18, Flags = 19, Pushes = 20, WarpCount = 44, Warps = 45, MaxWarps = 64, MaxPoints = 64;
+const int Curves = Warps + 4 * MaxWarps, CurveStride = 1 + 2 * MaxPoints;
+const int Master = 0, Red = 1, HueHue = 4, HueSat = 5, HueLum = 6, Luma = 7, Sat = 8;
+const int Qualifier = 0, Rgb = 1, Invert = 2, Picked = 3, PickedHsl = 6, Bounds = 9, Softness = 12, WindowCount = 13,
+          Windows = 14, WindowStride = 12;
+const float PI = 3.14159265358979;
+
+float T(int i) { return texelFetch(table, ivec2(i, 0), 0).r; }
+float unit(float v) { return clamp(v, 0.0, 1.0); }
+float signedPower(float v, float p) { return sign(v) * pow(abs(v), p); }
+
+float curveAt(int curve, float x, float fallback) {
+    int base = Curves + curve * CurveStride, n = int(T(base));
+    if (n <= 0) return fallback;
+    if (n == 1) return T(base + 2);
+    int right = 1;
+    while (right < n - 1 && T(base + 1 + right * 2) < x) ++right;
+    float ax = T(base + 1 + (right - 1) * 2), ay = T(base + 2 + (right - 1) * 2), bx = T(base + 1 + right * 2), by = T(base + 2 + right * 2);
+    if (bx <= ax) return by;
+    return ay + (x - ax) * (by - ay) / (bx - ax);
+}
+float luminance(vec3 c) { return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b; }
+
+vec3 correct(vec3 rgb) {
+    float black = T(Black), white = T(White);
+    vec3 o;
+    for (int c = 0; c < 3; ++c) {
+        float v = rgb[c];
+        v += T(Lift + c) * (1.0 - v);
+        if (T(Gamma + c) != 1.0) v = signedPower(v, T(Gamma + c));
+        v *= T(Gain + c);
+        v = (v - T(Pivot)) * T(Contrast) + T(Pivot) + T(Offset + c);
+        v *= T(Exposure);
+        v = (v - max(0.0, black)) / max(0.01, 1.0 - max(0.0, white) - max(0.0, black));
+        v = v * (1.0 + min(0.0, white) - max(0.0, -black)) + max(0.0, -black);
+        o[c] = curveAt(Master, curveAt(Red + c, v, v), v);
+    }
+    int flags = int(T(Flags));
+    float lum = luminance(o);
+    if ((flags & 1) != 0) {
+        vec3 d = vec3(signedPower(o.r, 1.0 / 2.4), signedPower(o.g, 1.0 / 2.4), signedPower(o.b, 1.0 / 2.4));
+        float high = max(d.r, max(d.g, d.b)), low = min(d.r, min(d.g, d.b)), range = high - low;
+        float saturation = high > 1e-8 ? min(1.0, range / high) : 0.0;
+        float hue = 0.0;
+        if (range > 0.0) {
+            float h = high == d.r ? (d.g - d.b) / range : high == d.g ? 2.0 + (d.b - d.r) / range : 4.0 + (d.r - d.g) / range;
+            h /= 6.0;
+            hue = h - floor(h);
+        }
+        float s = clamp((range - 0.03) / 0.07, 0.0, 1.0), amount = s * s * (3.0 - 2.0 * s);
+        float angle = T(Angle) + amount * (curveAt(HueHue, hue, 0.5) - 0.5) * 2.0 * PI;
+        float sat = T(Saturation) * max(0.0, 1.0 + amount * (curveAt(HueSat, hue, 0.5) - 0.5) * 2.0);
+        if (saturation > 1e-8) sat *= max(0.0, curveAt(Sat, saturation, saturation)) / saturation;
+        float weights = 0.0, meshHue = 0.0, meshSat = 0.0;
+        int warps = int(T(WarpCount));
+        for (int i = 0; i < warps; ++i) {
+            int w = Warps + i * 4;
+            float dh = abs(hue - T(w));
+            dh = min(dh, 1.0 - dh);
+            float weight = max(0.0, 1.0 - dh * 12.0) * max(0.0, 1.0 - abs(saturation - T(w + 1)) * 3.0);
+            weights += weight;
+            meshHue += weight * T(w + 2);
+            meshSat += weight * T(w + 3);
+        }
+        float scale = amount / max(1.0, weights);
+        angle += meshHue * scale * 2.0 * PI;
+        sat *= max(0.0, 1.0 + meshSat * scale);
+        float newLuma = curveAt(Luma, lum, lum) + amount * (curveAt(HueLum, hue, 0.5) - 0.5);
+        float y = luminance(o), u = o.b - y, v = o.r - y, co = cos(angle), si = sin(angle);
+        o.b = newLuma + sat * (u * co - v * si);
+        o.r = newLuma + sat * (u * si + v * co);
+        o.g = (newLuma - 0.2126 * o.r - 0.0722 * o.b) / 0.7152;
+    }
+    if ((flags & 2) != 0) {
+        const float centres[6] = float[6](0.04, 0.14, 0.3, 0.525, 0.75, 0.925);
+        float weights = 0.0;
+        vec4 push = vec4(0.0);
+        for (int z = 0; z < 6; ++z) {
+            float width = z == 0 ? 0.1 : z == 5 ? 0.15 : (centres[z + 1] - centres[z - 1]) * 0.7;
+            float weight = z == 5 && lum >= centres[z] ? 1.0 : max(0.0, 1.0 - abs(lum - centres[z]) / width);
+            weights += weight;
+            push += weight * vec4(T(Pushes + z * 4), T(Pushes + z * 4 + 1), T(Pushes + z * 4 + 2), T(Pushes + z * 4 + 3));
+        }
+        if (weights > 0.0) o *= exp2((vec3(push.x) + push.yzw) / weights);
+    }
+    return o;
+}
+
+vec3 hsl(vec3 c) {
+    c = clamp(c, 0.0, 1.0);
+    float high = max(c.r, max(c.g, c.b)), low = min(c.r, min(c.g, c.b)), delta = high - low, l = (high + low) * 0.5;
+    if (delta <= 1e-6) return vec3(-1.0, 0.0, l);
+    float s = l < 0.5 ? delta / (high + low) : delta / (2.0 - high - low);
+    float h = high == c.r ? (c.g - c.b) / delta : high == c.g ? 2.0 + (c.b - c.r) / delta : 4.0 + (c.r - c.g) / delta;
+    h *= 60.0;
+    if (h < 0.0) h += 360.0;
+    return vec3(h / 360.0, s, l);
+}
+float smoothStep(float lo, float hi, float x) {
+    if (hi <= lo) return x < lo ? 0.0 : 1.0;
+    float t = clamp((x - lo) / (hi - lo), 0.0, 1.0);
+    return t * t * (3.0 - 2.0 * t);
+}
+float window(int i, float x, float y, float aspect) {
+    int w = Windows + i * WindowStride, shape = int(T(w));
+    float dx = (x - T(w + 2)) * aspect, dy = y - T(w + 3);
+    float X = (T(w + 4) * dx - T(w + 5) * dy) / max(0.0001, T(w + 6) * aspect), Y = (T(w + 5) * dx + T(w + 4) * dy) / T(w + 7);
+    float softness = T(w + 8), result;
+    if (shape == 3) {
+        float s = max(0.0001, softness);
+        result = smoothStep(-s, s, X);
+    } else if (shape == 4) {
+        int n = int(T(w + 10)), p = int(T(w + 11));
+        float distance = 1e9;
+        bool inside = false;
+        for (int k = 0, j = n - 1; k < n; j = k++) {
+            float ax = T(p + k * 2), ay = T(p + k * 2 + 1);
+            int k1 = (k + 1) % n;
+            float bx = T(p + k1 * 2), by = T(p + k1 * 2 + 1);
+            float abx = bx - ax, aby = by - ay;
+            float u = unit(((X - ax) * abx + (Y - ay) * aby) / max(1e-12, abx * abx + aby * aby));
+            distance = min(distance, length(vec2(X - (ax + abx * u), Y - (ay + aby * u))));
+            float jx = T(p + j * 2), jy = T(p + j * 2 + 1);
+            if ((ay > Y) != (jy > Y) && X < (jx - ax) * (Y - ay) / (jy - ay) + ax) inside = !inside;
+        }
+        result = inside ? (softness > 0.0 ? smoothStep(0.0, softness, distance) : 1.0) : 0.0;
+    } else {
+        float d = shape == 1 ? max(abs(X), abs(Y)) : shape == 2 ? abs(X) + abs(Y) : length(vec2(X, Y));
+        result = 1.0 - smoothStep(max(0.0, 1.0 - softness), 1.0, d);
+    }
+    return T(w + 9) != 0.0 ? 1.0 - result : result;
+}
+float maskAt(vec4 c, ivec2 p) {
+    float key = 1.0;
+    if (T(Qualifier) != 0.0) {
+        vec3 d;
+        if (T(Rgb) != 0.0) {
+            d = abs(c.rgb - vec3(T(Picked), T(Picked + 1), T(Picked + 2)));
+        } else {
+            vec3 q = hsl(c.rgb);
+            float dh = abs(max(q.x, -1.0) - T(PickedHsl));
+            d = vec3(min(dh, 1.0 - dh), abs(q.y - T(PickedHsl + 1)), abs(q.z - T(PickedHsl + 2)));
+        }
+        for (int i = 0; i < 3; ++i) key *= 1.0 - smoothStep(T(Bounds + i), T(Bounds + i) + T(Softness), d[i]);
+        if (T(Invert) != 0.0) key = 1.0 - key;
+    }
+    int windows = int(T(WindowCount));
+    float combined = 1.0, aspect = float(pc.size.x) / float(pc.size.y);
+    for (int i = 0; i < windows; ++i) {
+        float a = window(i, (float(p.x) + 0.5) / float(pc.size.x), (float(p.y) + 0.5) / float(pc.size.y), aspect);
+        int combine = int(T(Windows + i * WindowStride + 1));
+        combined = i == 0 ? a : combine == 1 ? max(combined, a) : combine == 2 ? combined * (1.0 - a) : combined * a;
+    }
+    return unit(key * combined);
+}
+
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    if (any(greaterThanEqual(p, pc.size))) return;
+    bool hasA = (pc.has & 1) != 0, hasB = (pc.has & 2) != 0, hasM = (pc.has & 4) != 0;
+    vec4 a = hasA ? imageLoad(pictureA, p) : vec4(0.0), b = hasB ? imageLoad(pictureB, p) : vec4(0.0);
+    vec4 o = vec4(0.0);
+    int radius = int(round(abs(pc.amount)));
+    ivec2 along = pc.channel != 0 ? ivec2(0, 1) : ivec2(1, 0);
+    if (pc.kind == Correct) {
+        o = vec4(correct(a.rgb), a.a);
+    } else if (pc.kind == Box) {
+        vec3 sum = vec3(0.0);
+        for (int k = -radius; k <= radius; ++k) sum += imageLoad(pictureA, clamp(p + along * k, ivec2(0), pc.size - 1)).rgb;
+        o = vec4(sum / float(2 * radius + 1), a.a);
+    } else if (pc.kind == Detail) {
+        o = vec4(a.rgb + pc.amount * (a.rgb - b.rgb), a.a);
+    } else if (pc.kind == Mask) {
+        o = vec4(maskAt(a, p), 0.0, 0.0, 1.0);
+    } else if (pc.kind == Grow) {
+        float v = a.r;
+        for (int k = -radius; k <= radius; ++k) {
+            ivec2 q = p + along * k;
+            if (any(lessThan(q, ivec2(0))) || any(greaterThanEqual(q, pc.size))) continue;
+            float s = imageLoad(pictureA, q).r;
+            v = pc.amount > 0.0 ? max(v, s) : min(v, s);
+        }
+        o = vec4(v, 0.0, 0.0, 1.0);
+    } else if (pc.kind == Blur) {
+        float sum = 0.0;
+        int count = 0;
+        for (int k = -radius; k <= radius; ++k) {
+            ivec2 q = p + along * k;
+            if (any(lessThan(q, ivec2(0))) || any(greaterThanEqual(q, pc.size))) continue;
+            sum += imageLoad(pictureA, q).r;
+            ++count;
+        }
+        o = vec4(sum / float(max(1, count)), 0.0, 0.0, 1.0);
+    } else if (pc.kind == Key) {
+        float k = (hasA ? a.r : 1.0) * (hasB ? b.r : 1.0);
+        o = vec4(unit((pc.channel != 0 ? 1.0 - k : k) * pc.amount), 0.0, 0.0, 1.0);
+    } else if (pc.kind == Mix || pc.kind == Program) {
+        float m = unit((hasM ? imageLoad(pictureM, p).r : 1.0) * pc.amount);
+        o = a + (b - a) * m;
+    } else if (pc.kind == Sum) {
+        o = vec4(a.rgb + b.rgb, hasM ? imageLoad(pictureM, p).a : a.a);
+    } else if (pc.kind == Split) {
+        o = vec4(pc.channel == 0 ? a.r : 0.0, pc.channel == 1 ? a.g : 0.0, pc.channel == 2 ? a.b : 0.0, a.a);
+    } else if (pc.kind == Copy) {
+        o = a;
+    } else if (pc.kind == MatteView) {
+        float v = hasA ? a.r : 1.0;
+        o = vec4(v, v, v, 1.0);
+    } else if (pc.kind == People) {
+        // `a` is the picture the network cut out: its alpha is the matte.
+        o = vec4(hasA ? a.a : 1.0, 0.0, 0.0, 1.0);
+    }
+    imageStore(target, p, o);
+}

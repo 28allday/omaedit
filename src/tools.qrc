@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/tools">
+        <file alias="omaedit-aaf.py">tools/omaedit-aaf.py</file>
+    </qresource>
+</RCC>

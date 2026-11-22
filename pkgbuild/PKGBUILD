@@ -1,0 +1,151 @@
+# Maintainer: 28allday
+
+pkgname=omaedit
+pkgver=0.2.0
+pkgrel=1
+pkgdesc='Video editor with media, edit, colour, audio and delivery workspaces'
+arch=('x86_64' 'aarch64')
+url='https://github.com/28allday/omaedit'
+# OmaEdit is GPL v3 or later. The rest are what travels with it: the carried
+# FFmpeg (built GPL v3), x264, x265, Rubber Band and vid.stab (GPL v2 or later),
+# SVT-AV1, libvpx, dav1d, OpenAPV, OpenColorIO, OpenEXR, Imath, pystring and
+# OpenJPH (BSD), OpenCV, OpenTimelineIO and MODNet's weights (Apache), yaml-cpp,
+# the Vulkan headers and Whisper's speech model (MIT), minizip-ng (zlib), the
+# icons (ISC). Built into
+# OpenCV as Arch packages it: Intel's IPP (Intel Simplified Software License),
+# protobuf, ittnotify and SoftFloat (BSD), flatbuffers (Apache), the Rubik
+# typeface (OFL) and others under those licences.
+license=('GPL-3.0-or-later' 'GPL-2.0-or-later' 'BSD-2-Clause' 'BSD-3-Clause' 'Apache-2.0' 'MIT' 'Zlib' 'ISC' 'OFL-1.1'
+         'LicenseRef-AOMPL-1.0' 'LicenseRef-Intel-Simplified-Software-License')
+install='omaedit.install'
+# No link-time optimisation: it breaks the carried FFmpeg's assembly at link
+# time ("relocation … recompile with -fPIC"), as Arch's own FFmpeg avoids.
+options=('!debug' '!lto')
+# Everything it needs is named, so `pacman -U` gives a working app.
+# The libraries whose file names change when Arch updates them travel in the
+# package: x264, x265, SVT-AV1, libvpx and dav1d beside the carried FFmpeg
+# (bin/build-ffmpeg), OpenCV, OpenColorIO, OpenEXR, Imath, OpenTimelineIO,
+# yaml-cpp, pystring, minizip-ng, OpenJPH, Rubber Band and vid.stab beside the
+# program (bin/carry-libs). Their packages stay named here for what those
+# copies link in turn (TBB, LAPACK, FFTW and the like).
+# What is linked from the system is named by soname where Arch offers one:
+# makepkg versions it from what was linked, and pacman objects to an update
+# that would stop the program starting. Arch offers none for libdrm or Qt.
+# glslang's code is in the program (src/engine/engine.pri); the package is here
+# for glslangValidator, which the viewer runs, and SPIRV-Tools for the library
+# the program and the graphics drivers share.
+# Qt: the program asks for Qt 6.12's functions. Qt's RHI, whose binary
+# interface Qt may change in a later 6.x, is used only by the start-up check of
+# the interface, run as a separate process: should that check fail, the
+# interface is drawn in software. So a later Qt is allowed; one that renamed an
+# RHI function the check calls would need the package rebuilt.
+# The system's ffmpeg is here for its programs, ffmpeg and ffprobe, which the
+# proxies, reframing, transcription, archiving and some deliveries run. It may
+# move to a new major version: Qt Multimedia's plug-in, built against the
+# system's, then loads that beside the carried 9.1, and FFmpeg's symbols carry
+# their major version (LIBAVCODEC_63), so each library keeps to its own copy.
+# qt6-multimedia-ffmpeg is named so that pacman has no choice of Qt Multimedia
+# backend to ask about. No JACK is named: nothing here loads it; the system's
+# ffmpeg asks for one and takes whichever is installed.
+# Transcription works with nothing more to install: whisper.cpp's whisper-cli,
+# ggml (whose processor backends it loads) and the speech model below. ggml's
+# Vulkan backend is named too: on a GPU the editor's engine draws with it is
+# about twice as fast as the processor (a minute of speech in 1.4 s on an
+# Arc B580 against 2.6 s on 16 cores), and the app runs whisper on the
+# processor when the engine has no GPU (the CPU chosen, or only a software
+# Vulkan device, on which whisper is many times slower) and again when a run
+# on the GPU fails.
+depends=('ffmpeg>=2:9.0' 'glslang' 'spirv-tools' 'hicolor-icon-theme' 'liblz4.so' 'opencv' 'opencolorio>=2.5' 'openexr' 'opentimelineio'
+         'qt6-base>=6.12' 'qt6-declarative>=6.12' 'qt6-imageformats' 'qt6-multimedia-ffmpeg' 'qt6-multimedia>=6.12' 'qt6-svg' 'qt6-wayland'
+         'rubberband' 'vid.stab' 'libvulkan.so'
+         # Transcription (Inspector ▸ Transcript).
+         'whisper-cpp' 'ggml' 'ggml-vulkan'
+         # Mounting and ejecting drives from the Storage list.
+         'udisks2'
+         # The carried FFmpeg links these.
+         'libbz2.so' 'libdrm' 'liblzma.so' 'libmp3lame.so' 'libopus.so' 'libsnappy.so' 'libva.so' 'libva-drm.so'
+         'libvorbis.so' 'libvorbisenc.so' 'libz.so'
+         # The interface's typeface, and one to fall back on.
+         'ttf-jetbrains-mono-nerd' 'noto-fonts')
+optdepends=('xdg-desktop-portal: desktop settings integration'
+            'python-aaf2: AAF timeline import and export')
+# The carried FFmpeg 9.1 (bin/build-ffmpeg) is built from source: nasm and
+# NVENC's and AMF's headers, and git to fetch the pinned commit. glslang compiles the
+# engine's shaders into the program and is linked into it.
+makedepends=('cmake' 'gcc' 'make' 'qt6-base' 'qt6-declarative' 'qt6-tools' 'git' 'nasm' 'ffnvcodec-headers' 'amf-headers' 'glslang' 'vulkan-headers'
+             # Travel beside the carried FFmpeg (bin/build-ffmpeg) and the program (bin/carry-libs).
+             'x264' 'x265' 'svt-av1' 'libvpx' 'dav1d' 'imath' 'yaml-cpp' 'pystring' 'minizip-ng' 'openjph'
+             # The carried FFmpeg is built against these.
+             'lame' 'libvorbis' 'opus' 'snappy' 'libva' 'libdrm')
+# FFmpeg (8.0 and later) decodes APV but cannot encode it; APV exports use
+# OpenAPV's encoder, built statically from this pinned release.
+_openapv=1.1.3.0
+# Transcription's speech model: OpenAI's Whisper base model, multilingual, as
+# whisper.cpp converted it to ggml, at a pinned commit of its model repository.
+_whispermodel=5359861c739e955e79d9a303bcbc70fb988958b1
+source=("openapv-$_openapv.tar.gz::https://github.com/AcademySoftwareFoundation/openapv/archive/refs/tags/v$_openapv.tar.gz"
+        "ggml-base-${_whispermodel:0:8}.bin::https://huggingface.co/ggerganov/whisper.cpp/resolve/$_whispermodel/ggml-base.bin")
+sha256sums=('38f841ce44e80c40b682a5323b4f3ebc6e339b6071965bc1c705a17d46ab2fc8'
+            '60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe')
+noextract=("openapv-$_openapv.tar.gz")
+
+# Builds the working tree: ./bin/install runs it.
+build() {
+  cd "$startdir/.."
+  OMAEDIT_PACKAGE=1 ./bin/build
+  ./bin/carry-libs
+  OMAEDIT_OPENAPV_ARCHIVE="$srcdir/openapv-$_openapv.tar.gz" ./bin/setup-openapv
+}
+
+package() {
+  cd "$startdir/.."
+  /usr/bin/install -Dm755 build/omaedit "$pkgdir/usr/bin/omaedit"
+  # Found beside the binary as ../lib/omaedit/oapv_app_enc.
+  /usr/bin/install -Dm755 build/deps/openapv/bin/oapv_app_enc "$pkgdir/usr/lib/omaedit/oapv_app_enc"
+  /usr/bin/install -Dm644 build/deps/openapv/share/licenses/openapv/LICENSE \
+    "$pkgdir/usr/share/licenses/$pkgname/OpenAPV-BSD-3-Clause"
+  /usr/bin/install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  # The FFmpeg 9.1 it carries: the libraries, those that travel beside them,
+  # the licences and what they were built from.
+  local ffmpeg=build/ffmpeg/usr/lib/omaedit/ffmpeg/lib
+  if [ -d "$ffmpeg" ]; then
+    /usr/bin/install -dm755 "$pkgdir/usr/lib/omaedit/ffmpeg/lib"
+    cp -P "$ffmpeg"/lib*.so.* "$pkgdir/usr/lib/omaedit/ffmpeg/lib/"
+    /usr/bin/install -Dm644 build/ffmpeg-src/COPYING.GPLv3 "$pkgdir/usr/share/licenses/$pkgname/ffmpeg/COPYING.GPLv3"
+    /usr/bin/install -Dm644 build/ffmpeg-src/LICENSE.md "$pkgdir/usr/share/licenses/$pkgname/ffmpeg/LICENSE.md"
+    # What it says it was built from, this app's commit and where all of it is.
+    local commit
+    commit=$(git rev-parse HEAD 2>/dev/null || echo unknown)
+    git diff --quiet HEAD 2>/dev/null || commit="$commit, with changes not yet committed"
+    /usr/bin/install -dm755 "$pkgdir/usr/share/licenses/$pkgname/ffmpeg"
+    {
+      cat build/ffmpeg/SOURCE
+      printf '\nOmaEdit, commit %s\n' "$commit"
+      printf 'The complete source of this package: %s/releases, beside the package, as %s\n' \
+        "$url" "$pkgname-$pkgver-$pkgrel-source.tar.xz"
+    } > "$pkgdir/usr/share/licenses/$pkgname/ffmpeg/SOURCE"
+    /usr/bin/install -Dm644 "$startdir"/ffmpeg/*.patch -t "$pkgdir/usr/share/licenses/$pkgname/ffmpeg/"
+    cp -r build/ffmpeg/licenses/. "$pkgdir/usr/share/licenses/$pkgname/ffmpeg/"
+  fi
+  # The libraries that travel beside the program, their licences and what they are.
+  /usr/bin/install -Dm755 build/carried/lib/* -t "$pkgdir/usr/lib/omaedit/lib/"
+  /usr/bin/install -dm755 "$pkgdir/usr/share/licenses/$pkgname/carried"
+  cp -r build/carried/licenses/. "$pkgdir/usr/share/licenses/$pkgname/carried/"
+  /usr/bin/install -Dm644 build/carried/SOURCE "$pkgdir/usr/share/licenses/$pkgname/carried/SOURCE"
+  # glslang's code is linked into the program.
+  /usr/bin/install -Dm644 /usr/share/licenses/glslang/LICENSE "$pkgdir/usr/share/licenses/$pkgname/glslang-LICENSE"
+  /usr/bin/install -Dm644 shared/hardware/third_party/vulkan/LICENSE-MIT.txt "$pkgdir/usr/share/licenses/$pkgname/Vulkan-Headers-MIT"
+  /usr/bin/install -Dm644 src/engine/models/LICENSE.MODNet "$pkgdir/usr/share/licenses/$pkgname/LICENSE.MODNet"
+  # Transcription's speech model, found as ../share/omaedit/whisper beside the binary.
+  /usr/bin/install -Dm644 "$srcdir/ggml-base-${_whispermodel:0:8}.bin" "$pkgdir/usr/share/omaedit/whisper/ggml-base.bin"
+  /usr/bin/install -Dm644 "$startdir/LICENSE.whisper-model" "$pkgdir/usr/share/licenses/$pkgname/Whisper-base-model-MIT"
+  /usr/bin/install -Dm644 src/icons/LICENSE.lucide "$pkgdir/usr/share/licenses/$pkgname/Lucide-Icons-ISC"
+  /usr/bin/install -Dm644 "$startdir/omaedit.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/omaedit.svg"
+  /usr/bin/install -Dm644 "$startdir/omaedit.desktop" "$pkgdir/usr/share/applications/omaedit.desktop"
+  /usr/bin/install -Dm644 "$startdir/omaedit.metainfo.xml" "$pkgdir/usr/share/metainfo/org.omatools.omaedit.metainfo.xml"
+  /usr/bin/install -Dm644 THIRD_PARTY.md "$pkgdir/usr/share/licenses/$pkgname/THIRD_PARTY.md"
+  /usr/bin/install -Dm644 "$startdir/omaedit-project.xml" "$pkgdir/usr/share/mime/packages/omaedit-project.xml"
+  # Ship the skill with the package; the user registers it with omaedit skill --link.
+  /usr/bin/install -Dm644 skills/omaedit/SKILL.md \
+    "$pkgdir/usr/share/omaedit/skills/omaedit/SKILL.md"
+}

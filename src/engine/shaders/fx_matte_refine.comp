@@ -1,0 +1,45 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Matte refine, after a key: values 0 grow (+) or shrink (−) the matte by
+// that many pixels of a 1080-line picture, 1 blur it by that sigma; 2 a
+// garbage matte on, 3–6 its box (left, top, right, bottom as shares of the
+// picture), 7 keep inside it rather than outside; 8 show the matte (white
+// kept, black removed). Passes: grow across, grow down, blur across, blur
+// down and the result. Grown edges take the colour of the pixel that grew
+// them; blurred ones the blur's, the subject keeping its own where solid.
+#include "fx_common.glsl"
+float scale() { return float(pc.size.y) / 1080.0; }
+// The key's alpha with the garbage matte applied.
+float keyed(ivec2 q) {
+    q = clamp(q, ivec2(0), pc.size - 1);
+    float a = texelFetch(src, q, 0).a;
+    if (P(2) < 0.5) return a;
+    vec2 f = (vec2(q) + 0.5) / vec2(pc.size);
+    bool inside = f.x >= P(3) && f.x < P(5) && f.y >= P(4) && f.y < P(6);
+    return inside != (P(7) > 0.5) ? a : 0.0;
+}
+// One direction of the grow: the largest (or, shrinking, smallest) alpha
+// within the reach, and the colour of the pixel it came from.
+vec4 grow(ivec2 p, ivec2 dir, bool first) {
+    float g = P(0) * scale();
+    int n = min(64, int(floor(abs(g) + 0.5)));
+    vec4 best = vec4(at(p).rgb, first ? keyed(p) : at(p).a);
+    for (int i = -n; i <= n; ++i) {
+        if (i == 0) continue;
+        ivec2 q = p + dir * i;
+        float a = first ? keyed(q) : at(q).a;
+        if (g > 0.0 ? a > best.a : a < best.a) best = vec4(g > 0.0 ? at(q).rgb : best.rgb, a);
+    }
+    return best;
+}
+vec4 effect(ivec2 p) {
+    if (pc.pass == 0) return grow(p, ivec2(1, 0), true);
+    if (pc.pass == 1) return grow(p, ivec2(0, 1), false);
+    vec2 q = vec2(p) + 0.5;
+    float sigma = P(1) * scale();
+    if (pc.pass == 2) return straightSample(gaussLine(q, vec2(1.0, 0.0), sigma));
+    vec4 b = straightSample(gaussLine(q, vec2(0.0, 1.0), sigma)), c = texelFetch(aux, p, 0);
+    vec3 rgb = mix(b.rgb, c.rgb, c.a);
+    if (P(8) > 0.5) return vec4(light(vec3(b.a)), 1.0);
+    return vec4(rgb, b.a);
+}

@@ -1,0 +1,16 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Mirror: half the picture reflected over the other. Value 0: 0 across (the
+// left half kept), 1 down (the top kept), 2 the diagonal, 3 the other
+// diagonal; value 1 set keeps the other half instead.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec2 f = (vec2(p) + 0.5) / vec2(pc.size);
+    int mode = int(P(0) + 0.5);
+    bool other = P(1) > 0.5;
+    if (mode == 0) { if ((f.x > 0.5) != other) f.x = 1.0 - f.x; }
+    else if (mode == 1) { if ((f.y > 0.5) != other) f.y = 1.0 - f.y; }
+    else if (mode == 2) { if ((f.y > f.x) != other) f = f.yx; }
+    else { if ((f.x + f.y > 1.0) != other) f = vec2(1.0 - f.y, 1.0 - f.x); }
+    return sampleAt(f * vec2(pc.size));
+}

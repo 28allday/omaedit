@@ -1,0 +1,5 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Invert: each display value turned over (1 − v); alpha kept.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) { vec4 c = at(p); return vec4(light(1.0 - display(c.rgb)), c.a); }

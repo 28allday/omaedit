@@ -1,0 +1,5 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Black & white: every channel the picture's BT.709 luma (display values).
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) { vec4 c = at(p); vec3 e = display(c.rgb); return vec4(light(vec3(lumaOf(e))), c.a); }

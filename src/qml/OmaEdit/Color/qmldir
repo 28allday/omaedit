@@ -1,0 +1,38 @@
+module OmaEdit.Color
+
+singleton MockColor 1.0 MockColor.qml
+
+ColorWorkspace 1.0 ColorWorkspace.qml
+ColorPage 1.0 ColorPage.qml
+StillsGallery 1.0 StillsGallery.qml
+StillCard 1.0 StillCard.qml
+ColorViewer 1.0 ColorViewer.qml
+GradeVersions 1.0 GradeVersions.qml
+WindowOverlay 1.0 WindowOverlay.qml
+NodeGraph 1.0 NodeGraph.qml
+NodeItem 1.0 NodeItem.qml
+ClipStrip 1.0 ClipStrip.qml
+ScopeStack 1.0 ScopeStack.qml
+ScopeView 1.0 ScopeView.qml
+ColorKeyframes 1.0 ColorKeyframes.qml
+GradingTabs 1.0 GradingTabs.qml
+PrimariesTab 1.0 PrimariesTab.qml
+ColorWheel 1.0 ColorWheel.qml
+CurvesTab 1.0 CurvesTab.qml
+CurveEditor 1.0 CurveEditor.qml
+QualifierTab 1.0 QualifierTab.qml
+WindowsTab 1.0 WindowsTab.qml
+TrackerTab 1.0 TrackerTab.qml
+AiMaskPanel 1.0 AiMaskPanel.qml
+HdrTab 1.0 HdrTab.qml
+WarperTab 1.0 WarperTab.qml
+LutRow 1.0 LutRow.qml
+LutBrowser 1.0 LutBrowser.qml
+
+ColorManagement 1.0 ColorManagement.qml
+NodeRouting 1.0 NodeRouting.qml
+NodePresets 1.0 NodePresets.qml
+
+GradeSharing 1.0 GradeSharing.qml
+
+MaskProvider 1.0 MaskProvider.qml

@@ -1,0 +1,400 @@
+#version 450
+// One step of a source's video filter chain (see VideoFilter and
+// filterParams in frame.h), input picture to output picture. The CPU twin in
+// cpu_engine.cpp does the same arithmetic on the same numbers.
+#extension GL_GOOGLE_include_directive : require
+#include "common.glsl"
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(binding = 0) uniform sampler2D src;
+layout(binding = 1, rgba32f) uniform writeonly image2D dst;
+layout(binding = 2) uniform sampler2D aux;    // LUT texels, the mask picture, the matte or light wrap's
+layout(push_constant) uniform Push {
+    ivec2 size;       // the input picture
+    ivec2 outSize;
+    int kind, mode, ix, iy;
+    vec4 p[6];
+} pc;
+
+float P(int i) { return pc.p[i >> 2][i & 3]; }
+vec4 assoc(vec4 c) { return vec4(c.rgb * c.a, c.a); }
+vec4 at(ivec2 q) { return texelFetch(src, clamp(q, ivec2(0), pc.size - 1), 0); }
+float smoothRamp(float t) { return t * t * (3.0 - 2.0 * t); }
+float gauss(int k) { float x = float(k) / P(0); return exp(-0.5 * x * x); }
+// A wide blur's averaging: tap i of a box iy pixels wide about the pixel (an
+// even width takes half of each end, so it stays centred).
+float boxTap(int i) { return clamp(float(pc.iy) * 0.5 + 0.5 - abs(float(i)), 0.0, 1.0); }
+vec3 lutAt(int r, int g, int b) { return texelFetch(aux, ivec2(r, g + b * pc.ix), 0).rgb; }
+// Scroll: an associated tap, wrapped or transparent outside.
+vec4 scrollTap(ivec2 q) {
+    // q is never below -size - 1, and GLSL leaves % of negatives undefined.
+    if (pc.mode == 1) q = (q + 2 * pc.size) % pc.size;
+    else if (any(lessThan(q, ivec2(0))) || any(greaterThanEqual(q, pc.size))) return vec4(0.0);
+    return assoc(texelFetch(src, q, 0));
+}
+
+// The tone map's new brightest channel, word for word as toneMapValue in frame.h.
+float toneMapValue(int mode, float m) {
+    if (m <= 0.0) return 0.0;
+    if (mode == 1) return min(m * (1.0 + m * P(1)) / (1.0 + m), 1.0);
+    if (mode != 0) return min(m, 1.0);
+    float e = min(pqEncode(m * P(0) / 10000.0) / P(1), 1.0);
+    if (e > P(3)) {
+        float t = (e - P(3)) / (1.0 - P(3)), t2 = t * t, t3 = t2 * t;
+        e = (2.0 * t3 - 3.0 * t2 + 1.0) * P(3) + (t3 - 2.0 * t2 + t) * (1.0 - P(3)) + (-2.0 * t3 + 3.0 * t2) * P(2);
+    }
+    return min(pqDecode(e * P(1)) * 10000.0 / P(0), 1.0);
+}
+
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    if (any(greaterThanEqual(p, pc.outSize))) return;
+    vec4 c = texelFetch(src, min(p, pc.size - 1), 0), o = c;
+    if (pc.kind == 1) {
+        vec3 e = linearToSrgb(c.rgb);
+        float g = P(3);
+        e = vec3(pow(e.r, g), pow(e.g, g), pow(e.b, g));
+        vec3 r = vec3(P(0) * e.r + P(1) * e.g + P(2) * e.b + P(12),
+                      P(4) * e.r + P(5) * e.g + P(6) * e.b + P(13),
+                      P(8) * e.r + P(9) * e.g + P(10) * e.b + P(14));
+        o = vec4(srgbToLinear(clamp(r, 0.0, 1.0)), c.a * P(7));
+    } else if (pc.kind == 2) {
+        float k = P(0);
+        vec4 n = assoc(at(p + ivec2(0, -1))) + assoc(at(p + ivec2(0, 1))) + assoc(at(p + ivec2(-1, 0))) + assoc(at(p + ivec2(1, 0)));
+        vec4 s = assoc(c) * (1.0 + 4.0 * k) - n * k;
+        s.a = clamp(s.a, 0.0, 1.0);
+        s.rgb = clamp(s.rgb, vec3(0.0), vec3(s.a));
+        o = straightSample(s);
+    } else if (pc.kind == 3) {
+        // Chroma key, word for word as chromaKeyPixel in cpu_engine.cpp. The
+        // chroma comes from neighbours of like brightness (4:2:0 and
+        // compression put it a little beside the true edge); the matte is how
+        // far the backdrop's hue dominates, as a share of the sampled backdrop;
+        // what shows through is unmixed, then the key's spill taken out.
+        const vec3 luma = vec3(0.2126, 0.7152, 0.0722);
+        float yp = sqrt(max(dot(c.rgb, luma), 0.0));
+        vec3 sum = vec3(0.0);
+        float wsum = 0.0;
+        for (int j = -1; j <= 1; ++j)
+            for (int i = -1; i <= 1; ++i) {
+                vec3 n = at(p + ivec2(i, j) * 2).rgb;
+                float dyp = (sqrt(max(dot(n, luma), 0.0)) - yp) * P(14);
+                float w = exp(-dyp * dyp);
+                sum += w * n;
+                wsum += w;
+            }
+        vec3 ea = linearToSrgb(sum / wsum), e = linearToSrgb(c.rgb);
+        float y = dot(e, luma), ya = dot(ea, luma);
+        float cb = (ea.b - ya) / 1.8556, cr = (ea.r - ya) / 1.5748;
+        float d = cb * P(0) + cr * P(1), q = abs(cr * P(0) - cb * P(1));
+        float a = clamp((P(3) - (d - P(5) * q) * P(2)) * P(4), 0.0, 1.0);
+        // Own brightness; where it shows through, the neighbours' chroma (a
+        // solid pixel keeps its own detail); then the backdrop's share taken out.
+        float w = min((1.0 - a) * 4.0, 1.0);
+        float mb = mix((e.b - y) / 1.8556, cb, w), mr = mix((e.r - y) / 1.5748, cr, w);
+        vec3 m = vec3(y + 1.5748 * mr, 0.0, y + 1.8556 * mb);
+        m.g = (y - 0.2126 * m.r - 0.0722 * m.b) / 0.7152;
+        vec3 f = clamp((srgbToLinear(clamp(m, 0.0, 1.0)) - (1.0 - a) * vec3(P(8), P(9), P(10))) / max(a, 1e-3), 0.0, 1.0);
+        vec3 fe = linearToSrgb(f);
+        float fy = dot(fe, luma), fb = (fe.b - fy) / 1.8556, fr = (fe.r - fy) / 1.5748;
+        float df = fb * P(0) + fr * P(1);
+        // Never further from the key than the original is (no magenta where
+        // the backdrop beside the subject is darker than the sample).
+        float nd = max(df, min(mb * P(0) + mr * P(1), 0.0));
+        fb += P(0) * (nd - df);
+        fr += P(1) * (nd - df);
+        // Spill: the key colour itself taken out, brightness and all; a hue of
+        // its own leaning towards the key is kept where the subject is solid.
+        float qf = abs(fr * P(0) - fb * P(1));
+        float s = max(nd - P(7) * a * a * qf, 0.0) * P(2) * P(6);
+        vec3 r = vec3(fy + 1.5748 * fr, 0.0, fy + 1.8556 * fb);
+        r.g = (fy - 0.2126 * r.r - 0.0722 * r.b) / 0.7152;
+        r -= s * vec3(P(11), P(12), P(13));
+        o = vec4(srgbToLinear(clamp(r, 0.0, 1.0)), c.a * a);
+        if (P(15) > 0.5) o.rgb = c.rgb;  // the matte only: the picture's own colour
+    } else if (pc.kind == 4) {
+        vec3 e = linearToSrgb(c.rgb);
+        float dr = e.r - P(0), dg = e.g - P(1), db = e.b - P(2);
+        float t = clamp((sqrt(dr * dr + dg * dg + db * db) * 0.577350269 - P(3)) / P(4), 0.0, 1.0);
+        o = vec4(c.rgb, c.a * smoothRamp(t));
+    } else if (pc.kind == 5) {
+        vec3 e = linearToSrgb(c.rgb);
+        float y = 0.2126 * e.r + 0.7152 * e.g + 0.0722 * e.b;
+        float lo = clamp((y - P(0) + P(2)) / P(2), 0.0, 1.0), hi = clamp((P(1) + P(3) - y) / P(3), 0.0, 1.0);
+        o = vec4(c.rgb, c.a * lo * hi);
+    } else if (pc.kind == 6) {
+        vec3 e = linearToSrgb(c.rgb);
+        vec3 x = clamp(vec3(e.r * P(0) + P(4), e.g * P(1) + P(5), e.b * P(2) + P(6)), 0.0, 1.0);
+        int n = pc.ix;
+        vec3 pos = x * float(n - 1);
+        ivec3 i = min(ivec3(floor(pos)), ivec3(n - 2));
+        vec3 f = pos - vec3(i);
+        vec3 l;
+        if (pc.mode == 2) {
+            vec3 a = vec3(texelFetch(aux, ivec2(i.r, 0), 0).r, texelFetch(aux, ivec2(i.g, 0), 0).g, texelFetch(aux, ivec2(i.b, 0), 0).b);
+            vec3 b = vec3(texelFetch(aux, ivec2(i.r + 1, 0), 0).r, texelFetch(aux, ivec2(i.g + 1, 0), 0).g, texelFetch(aux, ivec2(i.b + 1, 0), 0).b);
+            l = a + (b - a) * f;
+        } else {
+            vec3 c000 = lutAt(i.r, i.g, i.b), c111 = lutAt(i.r + 1, i.g + 1, i.b + 1);
+            if (pc.mode == 1) {
+                // Tetrahedral: the corner path through the cell's ordering of f.
+                if (f.r > f.g) {
+                    if (f.g > f.b) l = (1.0 - f.r) * c000 + (f.r - f.g) * lutAt(i.r + 1, i.g, i.b) + (f.g - f.b) * lutAt(i.r + 1, i.g + 1, i.b) + f.b * c111;
+                    else if (f.r > f.b) l = (1.0 - f.r) * c000 + (f.r - f.b) * lutAt(i.r + 1, i.g, i.b) + (f.b - f.g) * lutAt(i.r + 1, i.g, i.b + 1) + f.g * c111;
+                    else l = (1.0 - f.b) * c000 + (f.b - f.r) * lutAt(i.r, i.g, i.b + 1) + (f.r - f.g) * lutAt(i.r + 1, i.g, i.b + 1) + f.g * c111;
+                } else {
+                    if (f.b > f.g) l = (1.0 - f.b) * c000 + (f.b - f.g) * lutAt(i.r, i.g, i.b + 1) + (f.g - f.r) * lutAt(i.r, i.g + 1, i.b + 1) + f.r * c111;
+                    else if (f.b > f.r) l = (1.0 - f.g) * c000 + (f.g - f.b) * lutAt(i.r, i.g + 1, i.b) + (f.b - f.r) * lutAt(i.r, i.g + 1, i.b + 1) + f.r * c111;
+                    else l = (1.0 - f.g) * c000 + (f.g - f.r) * lutAt(i.r, i.g + 1, i.b) + (f.r - f.b) * lutAt(i.r + 1, i.g + 1, i.b) + f.b * c111;
+                }
+            } else {
+                vec3 c100 = lutAt(i.r + 1, i.g, i.b), c010 = lutAt(i.r, i.g + 1, i.b), c110 = lutAt(i.r + 1, i.g + 1, i.b);
+                vec3 c001 = lutAt(i.r, i.g, i.b + 1), c101 = lutAt(i.r + 1, i.g, i.b + 1), c011 = lutAt(i.r, i.g + 1, i.b + 1);
+                vec3 x00 = c000 + (c100 - c000) * f.r, x10 = c010 + (c110 - c010) * f.r;
+                vec3 x01 = c001 + (c101 - c001) * f.r, x11 = c011 + (c111 - c011) * f.r;
+                vec3 y0 = x00 + (x10 - x00) * f.g, y1 = x01 + (x11 - x01) * f.g;
+                l = y0 + (y1 - y0) * f.b;
+            }
+        }
+        o = vec4(srgbToLinear(clamp(e + (l - e) * P(3), 0.0, 1.0)), c.a);
+    } else if (pc.kind == 7) {
+        // The mask stretched over the picture, plain bilinear on its values.
+        vec2 m = (vec2(p) + 0.5) / vec2(pc.outSize) * vec2(pc.ix, pc.iy) - 0.5;
+        ivec2 i = ivec2(floor(m)), hi = ivec2(pc.ix, pc.iy) - 1;
+        vec2 f = m - vec2(i);
+        vec4 a = texelFetch(aux, clamp(i, ivec2(0), hi), 0), b = texelFetch(aux, clamp(i + ivec2(1, 0), ivec2(0), hi), 0);
+        vec4 d = texelFetch(aux, clamp(i + ivec2(0, 1), ivec2(0), hi), 0), e = texelFetch(aux, clamp(i + ivec2(1, 1), ivec2(0), hi), 0);
+        vec4 top = a + (b - a) * f.x, bottom = d + (e - d) * f.x, v = top + (bottom - top) * f.y;
+        float k = P(3);
+        if (pc.mode == 0) o.a = c.a * (1.0 + (v.a - 1.0) * k);
+        else if (pc.mode == 1) o.a = c.a * (1.0 + ((0.2126 * v.r + 0.7152 * v.g + 0.0722 * v.b) - 1.0) * k);
+        else if (pc.mode == 5) {
+            float y = v.b;
+            float still = clamp(1.0 - (abs(v.r - y) + abs(v.g - y)) * 8.0, 0.0, 1.0);
+            o.a = c.a + (v.a - c.a) * (k * still * (2.0 / 3.0));
+        } else {
+            vec3 mk = srgbToLinear(v.rgb) * vec3(P(0), P(1), P(2));
+            float w = v.a * k;
+            if (pc.mode == 2) o.rgb = c.rgb + (c.rgb * mk - c.rgb) * w;
+            else if (pc.mode == 3) o.rgb = c.rgb + mk * w;
+            else o.rgb = max(c.rgb - mk * w, 0.0);
+        }
+    } else if (pc.kind == 8) {
+        ivec2 q = p + ivec2(pc.ix, pc.iy);
+        o = all(greaterThanEqual(q, ivec2(0))) && all(lessThan(q, pc.size)) ? texelFetch(src, q, 0) : vec4(0.0);
+    } else if (pc.kind == 15) {
+        // Grade: each channel's table at its display level, then the matrix,
+        // as gradeTableAt in frame.h.
+        vec3 e = clamp(linearToSrgb(c.rgb), 0.0, 1.0);
+        if ((pc.mode & 1) != 0) {
+            vec3 v;
+            for (int ch = 0; ch < 3; ++ch) {
+                float f = e[ch] * 65535.0;
+                int i0 = int(f), i1 = min(i0 + 1, 65535);
+                float a = texelFetch(aux, ivec2(i0 & 255, (i0 >> 8) + ch * 256), 0).r;
+                float b = texelFetch(aux, ivec2(i1 & 255, (i1 >> 8) + ch * 256), 0).r;
+                v[ch] = a + (b - a) * (f - float(i0));
+            }
+            e = v;
+        }
+        if ((pc.mode & 2) != 0)
+            e = vec3(P(0) * e.r + P(1) * e.g + P(2) * e.b, P(3) * e.r + P(4) * e.g + P(5) * e.b, P(6) * e.r + P(7) * e.g + P(8) * e.b);
+        o = vec4(srgbToLinear(clamp(e, 0.0, 1.0)), c.a);
+    } else if (pc.kind == 14) {
+        // Box mask: the distance of the pixel centre inside the box's nearest
+        // edge, over the feather (or a hard edge), as boxMaskAlpha in frame.h.
+        vec2 q = vec2(p) + 0.5;
+        float d = min(min(q.x - P(0), P(2) - q.x), min(q.y - P(1), P(3) - q.y));
+        float a = P(4) > 0.0 ? clamp(d / P(4), 0.0, 1.0) : (d >= 0.0 ? 1.0 : 0.0);
+        o.a = c.a * (pc.mode == 1 ? 1.0 - a : a);
+    } else if (pc.kind == 9) {
+        vec2 s = vec2(p) - vec2(P(0), P(1));
+        ivec2 i = ivec2(floor(s));
+        vec2 f = s - vec2(i);
+        vec4 a = scrollTap(i), b = scrollTap(i + ivec2(1, 0)), d = scrollTap(i + ivec2(0, 1)), e = scrollTap(i + ivec2(1, 1));
+        vec4 top = a + (b - a) * f.x, bottom = d + (e - d) * f.x;
+        o = straightSample(top + (bottom - top) * f.y);
+    } else if (pc.kind == 10) {
+        // Gaussian on associated colour, edges held: across into an
+        // associated picture (0), then down to straight colour (1); or on
+        // plain values, across (2) and down (3). Taps iy pixels apart; wider
+        // than one, over the picture averaged over iy pixels each way (4).
+        bool across = pc.mode == 0 || pc.mode == 2;
+        vec4 sum = vec4(0.0);
+        float wsum = 0.0;
+        if (pc.mode == 4) {
+            int h = pc.iy / 2;
+            for (int j = -h; j <= h; ++j)
+                for (int i = -h; i <= h; ++i) {
+                    float w = boxTap(i) * boxTap(j);
+                    sum += w * assoc(at(p + ivec2(i, j)));
+                    wsum += w;
+                }
+        } else for (int k = -pc.ix; k <= pc.ix; ++k) {
+            float w = gauss(k);
+            vec4 t = at(p + (across ? ivec2(k * pc.iy, 0) : ivec2(0, k * pc.iy)));
+            sum += w * (pc.mode == 0 ? assoc(t) : t);
+            wsum += w;
+        }
+        o = pc.mode == 1 || pc.mode == 4 ? straightSample(sum / wsum) : sum / wsum;
+    } else if (pc.kind == 11) {
+        // The moved alpha blurred across (into alpha), then down and drawn
+        // under the picture; nothing comes in from outside it. Taps iy pixels
+        // apart; wider than one, over the moved alpha averaged over iy pixels
+        // each way (2).
+        ivec2 d = ivec2(int(P(1)), int(P(2)));
+        float sum = 0.0, wsum = 0.0;
+        if (pc.mode == 2) {
+            int h = pc.iy / 2;
+            for (int j = -h; j <= h; ++j)
+                for (int i = -h; i <= h; ++i) {
+                    float w = boxTap(i) * boxTap(j);
+                    ivec2 q = p - d + ivec2(i, j);
+                    bool inside = all(greaterThanEqual(q, ivec2(0))) && all(lessThan(q, pc.size));
+                    sum += w * (inside ? texelFetch(src, q, 0).a : 0.0);
+                    wsum += w;
+                }
+        } else for (int k = -pc.ix; k <= pc.ix; ++k) {
+            float w = gauss(k);
+            ivec2 q = pc.mode == 0 ? p - d + ivec2(k * pc.iy, 0) : p + ivec2(0, k * pc.iy);
+            bool inside = all(greaterThanEqual(q, ivec2(0))) && all(lessThan(q, pc.size));
+            sum += w * (inside ? (pc.mode == 0 ? texelFetch(src, q, 0).a : texelFetch(aux, q, 0).a) : 0.0);
+            wsum += w;
+        }
+        float s = sum / wsum;
+        if (pc.mode != 1) o = vec4(0.0, 0.0, 0.0, s);
+        else {
+            float sh = s * P(3), a = c.a, oa = a + sh * (1.0 - a);
+            o = oa > 0.0 ? vec4((c.rgb * a + vec3(P(4), P(5), P(6)) * (sh * (1.0 - a))) / oa, oa) : vec4(0.0);
+        }
+    } else if (pc.kind == 12) {
+        // Hue kept: the brightest channel follows the curve, the others in proportion.
+        float m = max(max(c.r, c.g), c.b);
+        float k = m > 0.0 ? toneMapValue(pc.mode, m) / m : 0.0;
+        o.rgb = max(c.rgb, 0.0) * k;
+    } else if (pc.kind == 13) {
+        o.rgb = c.rgb * P(0);
+    } else if (pc.kind == 24) {
+        // The guided matte: a·I + b (a, b and the matte, ix × iy, plain
+        // bilinear), I this pixel's display brightness; its lo..hi made clear..solid.
+        vec2 m = (vec2(p) + 0.5) / vec2(pc.outSize) * vec2(pc.ix, pc.iy) - 0.5;
+        ivec2 i = ivec2(floor(m)), hi = ivec2(pc.ix, pc.iy) - 1;
+        vec2 f = m - vec2(i);
+        vec3 a = texelFetch(aux, clamp(i, ivec2(0), hi), 0).rgb, b = texelFetch(aux, clamp(i + ivec2(1, 0), ivec2(0), hi), 0).rgb;
+        vec3 d = texelFetch(aux, clamp(i + ivec2(0, 1), ivec2(0), hi), 0).rgb, e = texelFetch(aux, clamp(i + ivec2(1, 1), ivec2(0), hi), 0).rgb;
+        vec3 top = a + (b - a) * f.x, bottom = d + (e - d) * f.x, fit = top + (bottom - top) * f.y;
+        // The fit near the matte's edges only; the matte itself where it is solid or clear.
+        float guided = clamp(fit.x * dot(linearToSrgb(c.rgb), vec3(0.2126, 0.7152, 0.0722)) + fit.y, 0.0, 1.0);
+        float v = fit.z + (guided - fit.z) * clamp(P(2) * fit.z * (1.0 - fit.z), 0.0, 1.0);
+        o.a = c.a * clamp((v - P(0)) * P(1), 0.0, 1.0);
+    } else if (pc.kind == 27) {
+        // The matte's stats: mean brightness and its square over the picture
+        // pixels this one covers, beside the network's matte (aux).
+        int x0 = p.x * pc.size.x / pc.outSize.x, x1 = max(x0 + 1, ((p.x + 1) * pc.size.x + pc.outSize.x - 1) / pc.outSize.x);
+        int y0 = p.y * pc.size.y / pc.outSize.y, y1 = max(y0 + 1, ((p.y + 1) * pc.size.y + pc.outSize.y - 1) / pc.outSize.y);
+        float sum = 0.0, squares = 0.0;
+        for (int y = y0; y < y1; ++y)
+            for (int x = x0; x < x1; ++x) {
+                float l = dot(linearToSrgb(texelFetch(src, min(ivec2(x, y), pc.size - 1), 0).rgb), vec3(0.2126, 0.7152, 0.0722));
+                sum += l;
+                squares += l * l;
+            }
+        float n = float((x1 - x0) * (y1 - y0)), bright = sum / n, mt = texelFetch(aux, p, 0).r;
+        o = vec4(bright, mt, squares / n, bright * mt);
+    } else if (pc.kind == 28) {
+        // The local fit of the matte to brightness, from the blurred stats.
+        float a = (c.a - c.r * c.g) / (c.b - c.r * c.r + P(0));
+        o = vec4(a, c.g - a * c.r, 0.0, 1.0);
+    } else if (pc.kind == 32) {
+        // The blurred fit beside the matte (aux, Stats' green).
+        o = vec4(c.r, c.g, texelFetch(aux, p, 0).g, 1.0);
+    } else if (pc.kind == 30) {
+        // The mean of each ix × ix, associated.
+        vec4 sum = vec4(0.0);
+        for (int j = 0; j < pc.ix; ++j)
+            for (int i = 0; i < pc.ix; ++i) sum += assoc(texelFetch(src, min(p * pc.ix + ivec2(i, j), pc.size - 1), 0));
+        o = straightSample(sum / float(pc.ix * pc.ix));
+    } else if (pc.kind == 31) {
+        // The cut-out over its blurred background (ix × iy, P(0) of the size).
+        vec2 m = (vec2(p) + 0.5) * P(0) - 0.5;
+        ivec2 i = ivec2(floor(m)), hi = ivec2(pc.ix, pc.iy) - 1;
+        vec2 f = m - vec2(i);
+        vec4 a = texelFetch(aux, clamp(i, ivec2(0), hi), 0), b = texelFetch(aux, clamp(i + ivec2(1, 0), ivec2(0), hi), 0);
+        vec4 d = texelFetch(aux, clamp(i + ivec2(0, 1), ivec2(0), hi), 0), e = texelFetch(aux, clamp(i + ivec2(1, 1), ivec2(0), hi), 0);
+        vec4 top = a + (b - a) * f.x, bottom = d + (e - d) * f.x, back = top + (bottom - top) * f.y;
+        float oa = c.a + back.a * (1.0 - c.a);
+        o = oa > 0.0 ? vec4((c.rgb * c.a + back.rgb * back.a * (1.0 - c.a)) / oa, oa) : vec4(0.0);
+    } else if (pc.kind == 25) {
+        // Light wrap's light: under each scale × scale of the source alone
+        // (aux), the picture's colour (src, from ix, iy) where uncovered, with how much is.
+        // The source alone is all of aux, or (P(1), P(2) given) that corner of it.
+        int n = int(P(0));
+        ivec2 hi = pc.size - 1, alone = (P(1) > 0.0 ? ivec2(int(P(1)), int(P(2))) : textureSize(aux, 0)) - 1;
+        vec3 light = vec3(0.0);
+        float open = 0.0;
+        for (int j = 0; j < n; ++j)
+            for (int i = 0; i < n; ++i) {
+                ivec2 t = p * n + ivec2(i, j);
+                float u = 1.0 - texelFetch(aux, min(t, alone), 0).a;
+                light += assoc(texelFetch(src, clamp(t + ivec2(pc.ix, pc.iy), ivec2(0), hi), 0)).rgb * u;
+                open += u;
+            }
+        o = vec4(open > 0.0 ? light / open : vec3(0.0), open / float(n * n));
+    } else if (pc.kind == 26) {
+        // Light wrap's light (ix × iy, blurred) on the source: full where half is uncovered.
+        vec2 m = (vec2(p) + 0.5) * P(1) - 0.5;
+        ivec2 i = ivec2(floor(m)), hi = ivec2(pc.ix, pc.iy) - 1;
+        vec2 f = m - vec2(i);
+        vec4 a = texelFetch(aux, clamp(i, ivec2(0), hi), 0), b = texelFetch(aux, clamp(i + ivec2(1, 0), ivec2(0), hi), 0);
+        vec4 d = texelFetch(aux, clamp(i + ivec2(0, 1), ivec2(0), hi), 0), e = texelFetch(aux, clamp(i + ivec2(1, 1), ivec2(0), hi), 0);
+        vec4 top = a + (b - a) * f.x, bottom = d + (e - d) * f.x, v = top + (bottom - top) * f.y;
+        float edge = min(v.a * 2.0, 1.0);
+        if (pc.mode == 1) o.rgb = c.rgb + (v.rgb - c.rgb) * clamp(edge * P(0), 0.0, 1.0);
+        else o.rgb = c.rgb + v.rgb * edge * P(0);
+    } else if (pc.kind == 34) {
+        // A step kept within its shape: src is the step's picture, aux the one
+        // it was given. The signed distance to the shape's edge over the
+        // feather, as shapeCover in frame.h.
+        vec2 q = vec2(p) + 0.5;
+        int shape = pc.mode & 15;
+        float d;
+        if (shape == 3) {
+            vec2 first = q - vec2(P(0), P(1));
+            d = dot(first, first);
+            float s = 1.0;
+            for (int i = 0, j = pc.ix - 1; i < pc.ix; j = i, ++i) {
+                vec2 vi = vec2(P(2 * i), P(2 * i + 1)), vj = vec2(P(2 * j), P(2 * j + 1));
+                vec2 e = vj - vi, w = q - vi;
+                vec2 b = w - e * clamp(dot(w, e) / max(dot(e, e), 1e-12), 0.0, 1.0);
+                d = min(d, dot(b, b));
+                bool c0 = q.y >= vi.y, c1 = q.y < vj.y, c2 = e.x * w.y > e.y * w.x;
+                if ((c0 && c1 && c2) || (!c0 && !c1 && !c2)) s = -s;
+            }
+            d = s * sqrt(d);
+        } else {
+            vec2 t = q - vec2(P(0), P(1));
+            vec2 r = vec2(t.x * P(4) + t.y * P(5), t.y * P(4) - t.x * P(5));
+            vec2 h = vec2(P(2), P(3));
+            if (shape == 2) {
+                float k0 = length(r / h), k1 = length(r / (h * h));
+                d = k1 > 1e-12 ? k0 * (k0 - 1.0) / k1 : -min(h.x, h.y);
+            } else {
+                vec2 dd = abs(r) - h;
+                d = length(max(dd, 0.0)) + min(max(dd.x, dd.y), 0.0);
+            }
+        }
+        float m = P(16) > 0.0 ? clamp(0.5 - d / P(16), 0.0, 1.0) : (d <= 0.0 ? 1.0 : 0.0);
+        m = m * m * (3.0 - 2.0 * m);
+        if ((pc.mode & 16) != 0) m = 1.0 - m;
+        vec4 was = assoc(texelFetch(aux, min(p, pc.size - 1), 0)), now = assoc(c);
+        o = straightSample(was + (now - was) * m);
+    } else if (pc.kind == 33) {
+        // The sRGB curve either way, mirrored below 0 and carried on above 1:
+        // the two together give back what went in.
+        vec3 s = sign(c.rgb), m = abs(c.rgb);
+        if (pc.mode == 0) o.rgb = s * srgbToLinear(m);
+        else o.rgb = s * vec3(m.r <= 0.0031308 ? m.r * 12.92 : 1.055 * pow(m.r, 1.0 / 2.4) - 0.055,
+                              m.g <= 0.0031308 ? m.g * 12.92 : 1.055 * pow(m.g, 1.0 / 2.4) - 0.055,
+                              m.b <= 0.0031308 ? m.b * 12.92 : 1.055 * pow(m.b, 1.0 / 2.4) - 0.055);
+    }
+    imageStore(dst, p, o);
+}

@@ -1,0 +1,17 @@
+update_omaedit_desktop() {
+  gtk-update-icon-cache -q -t -f usr/share/icons/hicolor >/dev/null 2>&1 || true
+  update-desktop-database -q >/dev/null 2>&1 || true
+}
+
+post_install() {
+  update_omaedit_desktop
+  echo 'OmaEdit agent skill: run omaedit skill --link as your normal user.'
+}
+
+post_upgrade() {
+  post_install
+}
+
+post_remove() {
+  update_omaedit_desktop
+}

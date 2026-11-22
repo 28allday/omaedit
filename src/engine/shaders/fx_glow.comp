@@ -1,0 +1,14 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Glow: the picture screened with a blur of itself. Value 0: the blur's
+// reach (sigma 5 % of the height at 1). Passes: across, down, then the mix.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec2 q = vec2(p) + 0.5;
+    float sigma = P(0) * 0.05 * float(pc.size.y);
+    if (pc.pass == 0) return straightSample(gaussLine(q, vec2(1.0, 0.0), sigma));
+    if (pc.pass == 1) return straightSample(gaussLine(q, vec2(0.0, 1.0), sigma));
+    vec4 c = texelFetch(aux, p, 0), g = at(p);
+    vec3 e = display(c.rgb), ge = display(g.rgb);
+    return vec4(light(1.0 - (1.0 - e) * (1.0 - ge)), c.a);
+}

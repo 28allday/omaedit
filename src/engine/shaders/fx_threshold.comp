@@ -1,0 +1,5 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Threshold: white where the luma reaches the threshold (value 0), else black.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) { vec4 c = at(p); return vec4(vec3(lumaOf(display(c.rgb)) >= P(0) ? 1.0 : 0.0), c.a); }

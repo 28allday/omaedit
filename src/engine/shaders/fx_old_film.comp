@@ -1,0 +1,13 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Old film: on some frames (value 1 percent of them) the picture jumps up or
+// down by up to value 0 pixels of a 1080-line picture; its brightness
+// flickers a little on every frame.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    float jump = 0.0;
+    if (fxHash(pc.frame, 1, 3) * 100.0 < P(1)) jump = floor((fxHash(pc.frame, 2, 3) * 2.0 - 1.0) * P(0) * float(pc.size.y) / 1080.0 + 0.5);
+    vec4 c = at(p + ivec2(0, int(jump)));
+    float flicker = 1.0 + (fxHash(pc.frame, 4, 3) - 0.5) * 0.08;
+    return vec4(light(display(c.rgb) * flicker), c.a);
+}

@@ -1,0 +1,11 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Strobe: the picture shown for `interval` frames (value 0), then hidden for
+// as many; value 1 set starts hidden.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    int interval = max(1, int(P(0) + 0.5));
+    bool hidden = ((pc.frame / interval) % 2 == 1) != (P(1) > 0.5);
+    vec4 c = at(p);
+    return hidden ? vec4(c.rgb, 0.0) : c;
+}

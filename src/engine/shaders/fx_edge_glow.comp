@@ -1,0 +1,16 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Edge glow: where the brightness changes by more than value 0 (Sobel, on
+// display luma), the picture lit by value 1 and its colour pushed by value 2.
+#include "fx_common.glsl"
+float l(ivec2 q) { return lumaOf(display(at(q).rgb)); }
+vec4 effect(ivec2 p) {
+    float gx = l(p + ivec2(1, -1)) + 2.0 * l(p + ivec2(1, 0)) + l(p + ivec2(1, 1)) - l(p + ivec2(-1, -1)) - 2.0 * l(p + ivec2(-1, 0)) - l(p + ivec2(-1, 1));
+    float gy = l(p + ivec2(-1, 1)) + 2.0 * l(p + ivec2(0, 1)) + l(p + ivec2(1, 1)) - l(p + ivec2(-1, -1)) - 2.0 * l(p + ivec2(0, -1)) - l(p + ivec2(1, -1));
+    float m = sqrt(gx * gx + gy * gy) * 0.25 * unit();
+    float t = clamp((m - P(0)) / 0.1, 0.0, 1.0);
+    vec4 c = at(p);
+    vec3 e = display(c.rgb);
+    e = e + t * (P(1) * e + P(2) * (e - vec3(lumaOf(e))));
+    return vec4(light(e), c.a);
+}

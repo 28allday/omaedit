@@ -1,0 +1,12 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Luma band key: transparent where the display luma lies between values 0
+// and 1, opaque beyond them by the softness (value 2), a ramp between.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec4 c = at(p);
+    float l = lumaOf(display(c.rgb)), lo = P(0), hi = P(1), soft = max(P(2), 4.0 / 255.0);
+    // The nearer edge's ramp (the two may cross, when the softness is wider than the band).
+    float keep = max(clamp((lo - l) / soft, 0.0, 1.0), clamp((l - hi) / soft, 0.0, 1.0));
+    return vec4(c.rgb, c.a * keep);
+}

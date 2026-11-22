@@ -1,0 +1,17 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Scratches: value 1 thin lines down the picture, value 0 pixels wide on a
+// 1080-line picture, moving every other frame; some light, some dark.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec4 c = at(p);
+    vec3 e = display(c.rgb);
+    int count = int(min(P(1), 100.0) + 0.5);
+    float width = max(0.5, P(0) * float(pc.size.y) / 1080.0), x = float(p.x) + 0.5;
+    for (int i = 0; i < count; ++i) {
+        float at_ = fxHash(pc.frame / 2, i, 23) * float(pc.size.x);
+        float cover = clamp(width * 0.5 - abs(x - at_) + 0.5, 0.0, 1.0) * (0.4 + 0.6 * fxHash(p.y / 8, i, pc.frame + 29));
+        e = fxHash(pc.frame / 2, i, 31) < 0.5 ? mix(e, vec3(1.0), cover * 0.5) : e * (1.0 - cover * 0.6);
+    }
+    return vec4(light(e), c.a);
+}

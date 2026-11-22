@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=OmaEdit
+GenericName=Video Editor
+Comment=Video editor for Omarchy
+Exec=omaedit %f
+Icon=omaedit
+Terminal=false
+Categories=AudioVideo;Video;AudioVideoEditing;
+MimeType=application/x-omaedit-project;
+Keywords=omarchy;video;editor;
+StartupWMClass=omaedit

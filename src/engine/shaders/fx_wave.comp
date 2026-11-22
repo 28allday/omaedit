@@ -1,0 +1,15 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Wave: the picture rippled by sine waves. Value 0: amplitude in pixels of
+// a 1080-line picture, 1: speed (phase steps per frame), 2: across on, 3:
+// down on.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    float amp = P(0) * float(pc.size.y) / 1080.0, phase = P(1) * float(pc.frame) * 0.1;
+    vec2 q = vec2(p) + 0.5;
+    vec2 d = vec2(0.0);
+    float period = max(amp * 4.0, 8.0 * unit());
+    if (P(2) > 0.5) d.x = amp * sin(q.y / period + phase);
+    if (P(3) > 0.5) d.y = amp * sin(q.x / period + phase);
+    return sampleAt(q + d);
+}

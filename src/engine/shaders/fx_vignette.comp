@@ -1,0 +1,16 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Vignette: darker towards the edges. Value 0: the clear centre's radius
+// (share of the half diagonal), 1: how far the fall-off reaches beyond it,
+// 2: its shape (0.5 follows the picture; lower is wider, higher taller).
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec4 c = at(p);
+    vec2 d = (vec2(p) + 0.5) / vec2(pc.size) - 0.5;
+    float shape = clamp(P(2), 0.01, 0.99);
+    d *= vec2(2.0 * shape, 2.0 * (1.0 - shape)) * 1.41421356;
+    float r = length(d);
+    float t = clamp((r - P(0)) / max(P(1), 1e-3), 0.0, 1.0);
+    float keep = 1.0 - t * t * (3.0 - 2.0 * t);
+    return vec4(c.rgb * keep, c.a);
+}

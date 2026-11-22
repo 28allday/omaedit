@@ -1,0 +1,12 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Letterbox: bars over the top and bottom, together this share of the
+// height (value 0); black, or with value 1 transparent.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec4 c = at(p);
+    float bar = clamp(P(0), 0.0, 1.0) * float(pc.size.y) * 0.5;
+    float y = float(p.y) + 0.5;
+    if (y >= bar && y <= float(pc.size.y) - bar) return c;
+    return P(1) > 0.5 ? vec4(0.0) : vec4(0.0, 0.0, 0.0, 1.0);
+}

@@ -1,0 +1,741 @@
+ocio_profile_version: 2.4
+
+environment:
+  {}
+search_path: ""
+strictparsing: true
+luma: [0.2126, 0.7152, 0.0722]
+name: Oma Colour 1 - Video 1
+description: Oma suite linear Rec.709 D65 interchange. Video component encodings; no tone mapping. PQ linear 1 = 100 cd/m2, preserving highlights above 1. HLG uses normalized inverse OETF, without display OOTF. MLT compositing/storage have integer boundaries.
+
+roles:
+  aces_interchange: ACES2065-1
+  cie_xyz_d65_interchange: CIE XYZ D65
+  color_picking: sRGB
+  color_timing: rec709/rec709
+  compositing_log: Log2 Rec.709
+  data: Raw
+  default: sRGB
+  matte_paint: sRGB
+  oma_interchange: Linear Rec.709
+  scene_linear: Linear Rec.709
+  texture_paint: sRGB
+
+file_rules:
+  - !<Rule> {name: Default, colorspace: sRGB}
+
+displays:
+  sRGB:
+    - !<View> {name: Standard, colorspace: sRGB}
+    - !<View> {name: Linear diagnostic, colorspace: Linear Rec.709}
+  rec709/rec709:
+    - !<View> {name: Standard, colorspace: rec709/rec709}
+    - !<View> {name: Linear diagnostic, colorspace: rec709/linear}
+  rec709/srgb:
+    - !<View> {name: Standard, colorspace: rec709/srgb}
+    - !<View> {name: Linear diagnostic, colorspace: rec709/linear}
+  rec709/linear:
+    - !<View> {name: Standard, colorspace: rec709/linear}
+    - !<View> {name: Linear diagnostic, colorspace: rec709/linear}
+  rec709/2.2:
+    - !<View> {name: Standard, colorspace: rec709/2.2}
+    - !<View> {name: Linear diagnostic, colorspace: rec709/linear}
+  rec709/2.4:
+    - !<View> {name: Standard, colorspace: rec709/2.4}
+    - !<View> {name: Linear diagnostic, colorspace: rec709/linear}
+  rec709/2.6:
+    - !<View> {name: Standard, colorspace: rec709/2.6}
+    - !<View> {name: Linear diagnostic, colorspace: rec709/linear}
+  rec709/pq:
+    - !<View> {name: Standard, colorspace: rec709/pq}
+    - !<View> {name: Linear diagnostic, colorspace: rec709/linear}
+  rec709/hlg:
+    - !<View> {name: Standard, colorspace: rec709/hlg}
+    - !<View> {name: Linear diagnostic, colorspace: rec709/linear}
+  srgb/rec709:
+    - !<View> {name: Standard, colorspace: srgb/rec709}
+    - !<View> {name: Linear diagnostic, colorspace: srgb/linear}
+  srgb/srgb:
+    - !<View> {name: Standard, colorspace: srgb/srgb}
+    - !<View> {name: Linear diagnostic, colorspace: srgb/linear}
+  srgb/linear:
+    - !<View> {name: Standard, colorspace: srgb/linear}
+    - !<View> {name: Linear diagnostic, colorspace: srgb/linear}
+  srgb/2.2:
+    - !<View> {name: Standard, colorspace: srgb/2.2}
+    - !<View> {name: Linear diagnostic, colorspace: srgb/linear}
+  srgb/2.4:
+    - !<View> {name: Standard, colorspace: srgb/2.4}
+    - !<View> {name: Linear diagnostic, colorspace: srgb/linear}
+  srgb/2.6:
+    - !<View> {name: Standard, colorspace: srgb/2.6}
+    - !<View> {name: Linear diagnostic, colorspace: srgb/linear}
+  srgb/pq:
+    - !<View> {name: Standard, colorspace: srgb/pq}
+    - !<View> {name: Linear diagnostic, colorspace: srgb/linear}
+  srgb/hlg:
+    - !<View> {name: Standard, colorspace: srgb/hlg}
+    - !<View> {name: Linear diagnostic, colorspace: srgb/linear}
+  rec2020/rec709:
+    - !<View> {name: Standard, colorspace: rec2020/rec709}
+    - !<View> {name: Linear diagnostic, colorspace: rec2020/linear}
+  rec2020/srgb:
+    - !<View> {name: Standard, colorspace: rec2020/srgb}
+    - !<View> {name: Linear diagnostic, colorspace: rec2020/linear}
+  rec2020/linear:
+    - !<View> {name: Standard, colorspace: rec2020/linear}
+    - !<View> {name: Linear diagnostic, colorspace: rec2020/linear}
+  rec2020/2.2:
+    - !<View> {name: Standard, colorspace: rec2020/2.2}
+    - !<View> {name: Linear diagnostic, colorspace: rec2020/linear}
+  rec2020/2.4:
+    - !<View> {name: Standard, colorspace: rec2020/2.4}
+    - !<View> {name: Linear diagnostic, colorspace: rec2020/linear}
+  rec2020/2.6:
+    - !<View> {name: Standard, colorspace: rec2020/2.6}
+    - !<View> {name: Linear diagnostic, colorspace: rec2020/linear}
+  rec2020/pq:
+    - !<View> {name: Standard, colorspace: rec2020/pq}
+    - !<View> {name: Linear diagnostic, colorspace: rec2020/linear}
+  rec2020/hlg:
+    - !<View> {name: Standard, colorspace: rec2020/hlg}
+    - !<View> {name: Linear diagnostic, colorspace: rec2020/linear}
+  p3/rec709:
+    - !<View> {name: Standard, colorspace: p3/rec709}
+    - !<View> {name: Linear diagnostic, colorspace: p3/linear}
+  p3/srgb:
+    - !<View> {name: Standard, colorspace: p3/srgb}
+    - !<View> {name: Linear diagnostic, colorspace: p3/linear}
+  p3/linear:
+    - !<View> {name: Standard, colorspace: p3/linear}
+    - !<View> {name: Linear diagnostic, colorspace: p3/linear}
+  p3/2.2:
+    - !<View> {name: Standard, colorspace: p3/2.2}
+    - !<View> {name: Linear diagnostic, colorspace: p3/linear}
+  p3/2.4:
+    - !<View> {name: Standard, colorspace: p3/2.4}
+    - !<View> {name: Linear diagnostic, colorspace: p3/linear}
+  p3/2.6:
+    - !<View> {name: Standard, colorspace: p3/2.6}
+    - !<View> {name: Linear diagnostic, colorspace: p3/linear}
+  p3/pq:
+    - !<View> {name: Standard, colorspace: p3/pq}
+    - !<View> {name: Linear diagnostic, colorspace: p3/linear}
+  p3/hlg:
+    - !<View> {name: Standard, colorspace: p3/hlg}
+    - !<View> {name: Linear diagnostic, colorspace: p3/linear}
+  rec601/rec709:
+    - !<View> {name: Standard, colorspace: rec601/rec709}
+    - !<View> {name: Linear diagnostic, colorspace: rec601/linear}
+  rec601/srgb:
+    - !<View> {name: Standard, colorspace: rec601/srgb}
+    - !<View> {name: Linear diagnostic, colorspace: rec601/linear}
+  rec601/linear:
+    - !<View> {name: Standard, colorspace: rec601/linear}
+    - !<View> {name: Linear diagnostic, colorspace: rec601/linear}
+  rec601/2.2:
+    - !<View> {name: Standard, colorspace: rec601/2.2}
+    - !<View> {name: Linear diagnostic, colorspace: rec601/linear}
+  rec601/2.4:
+    - !<View> {name: Standard, colorspace: rec601/2.4}
+    - !<View> {name: Linear diagnostic, colorspace: rec601/linear}
+  rec601/2.6:
+    - !<View> {name: Standard, colorspace: rec601/2.6}
+    - !<View> {name: Linear diagnostic, colorspace: rec601/linear}
+  rec601/pq:
+    - !<View> {name: Standard, colorspace: rec601/pq}
+    - !<View> {name: Linear diagnostic, colorspace: rec601/linear}
+  rec601/hlg:
+    - !<View> {name: Standard, colorspace: rec601/hlg}
+    - !<View> {name: Linear diagnostic, colorspace: rec601/linear}
+
+active_displays: []
+active_views: []
+
+default_view_transform: Un-tone-mapped
+
+view_transforms:
+  - !<ViewTransform>
+    name: Un-tone-mapped
+    from_scene_reference: !<MatrixTransform> {matrix: [0.412390799265959, 0.357584339383878, 0.180480788401834, 0, 0.212639005871510, 0.715168678767756, 0.0721923153607337, 0, 0.0193308187155918, 0.119194779794626, 0.950532152249661, 0, 0, 0, 0, 1]}
+
+display_colorspaces:
+  - !<ColorSpace>
+    name: CIE XYZ D65
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    allocation: uniform
+
+colorspaces:
+  - !<ColorSpace>
+    name: Linear Rec.709
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: scene-linear
+    allocation: uniform
+
+  - !<ColorSpace>
+    name: sRGB
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<ExponentWithLinearTransform> {gamma: 2.4, offset: 0.055}
+
+  - !<ColorSpace>
+    name: ACES2065-1
+    family: ""
+    equalitygroup: ""
+    bitdepth: unknown
+    isdata: false
+    encoding: scene-linear
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<BuiltinTransform> {style: UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD}
+        - !<MatrixTransform> {matrix: [0.41239079926596, 0.357584339383878, 0.180480788401834, 0, 0.21263900587151, 0.715168678767756, 0.0721923153607337, 0, 0.0193308187155918, 0.119194779794626, 0.950532152249661, 0, 0, 0, 0, 1], direction: inverse}
+
+  - !<ColorSpace>
+    name: Raw
+    family: ""
+    equalitygroup: ""
+    bitdepth: unknown
+    isdata: true
+    allocation: uniform
+
+  - !<ColorSpace>
+    name: Log2 Rec.709
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: log
+    allocation: uniform
+    from_scene_reference: !<LogTransform> {}
+
+  - !<ColorSpace>
+    name: rec709/rec709
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentWithLinearTransform> {gamma: 2.22222222222222, offset: 0.099}
+        - !<MatrixTransform> {matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 1.46684263935670e-17, 1, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec709/srgb
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentWithLinearTransform> {gamma: 2.4, offset: 0.055}
+        - !<MatrixTransform> {matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 1.46684263935670e-17, 1, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec709/linear
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: scene-linear
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<MatrixTransform> {matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 1.46684263935670e-17, 1, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec709/2.2
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentTransform> {value: 2.2, style: mirror}
+        - !<MatrixTransform> {matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 1.46684263935670e-17, 1, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec709/2.4
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentTransform> {value: 2.4, style: mirror}
+        - !<MatrixTransform> {matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 1.46684263935670e-17, 1, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec709/2.6
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentTransform> {value: 2.6, style: mirror}
+        - !<MatrixTransform> {matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 1.46684263935670e-17, 1, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec709/pq
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<FixedFunctionTransform> {style: Lin_TO_PQ, direction: inverse}
+        - !<MatrixTransform> {matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 1.46684263935670e-17, 1, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec709/hlg
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<BuiltinTransform> {style: CURVE - HLG-OETF-INVERSE}
+        - !<MatrixTransform> {matrix: [0.333333333333333, 0, 0, 0, 0, 0.333333333333333, 0, 0, 0, 0, 0.333333333333333, 0, 0, 0, 0, 1]}
+        - !<MatrixTransform> {matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 1.46684263935670e-17, 1, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: srgb/rec709
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentWithLinearTransform> {gamma: 2.22222222222222, offset: 0.099}
+        - !<MatrixTransform> {matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 1.46684263935670e-17, 1, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: srgb/srgb
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentWithLinearTransform> {gamma: 2.4, offset: 0.055}
+        - !<MatrixTransform> {matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 1.46684263935670e-17, 1, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: srgb/linear
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: scene-linear
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<MatrixTransform> {matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 1.46684263935670e-17, 1, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: srgb/2.2
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentTransform> {value: 2.2, style: mirror}
+        - !<MatrixTransform> {matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 1.46684263935670e-17, 1, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: srgb/2.4
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentTransform> {value: 2.4, style: mirror}
+        - !<MatrixTransform> {matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 1.46684263935670e-17, 1, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: srgb/2.6
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentTransform> {value: 2.6, style: mirror}
+        - !<MatrixTransform> {matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 1.46684263935670e-17, 1, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: srgb/pq
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<FixedFunctionTransform> {style: Lin_TO_PQ, direction: inverse}
+        - !<MatrixTransform> {matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 1.46684263935670e-17, 1, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: srgb/hlg
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<BuiltinTransform> {style: CURVE - HLG-OETF-INVERSE}
+        - !<MatrixTransform> {matrix: [0.333333333333333, 0, 0, 0, 0, 0.333333333333333, 0, 0, 0, 0, 0.333333333333333, 0, 0, 0, 0, 1]}
+        - !<MatrixTransform> {matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 1.46684263935670e-17, 1, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec2020/rec709
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentWithLinearTransform> {gamma: 2.22222222222222, offset: 0.099}
+        - !<MatrixTransform> {matrix: [1.66049100210843, -0.58764113878855, -0.0728498633198849, 0, -0.124550474521591, 1.13289989712596, -0.00834942260436947, 0, -0.0181507633549052, -0.100578898008007, 1.11872966136291, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec2020/srgb
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentWithLinearTransform> {gamma: 2.4, offset: 0.055}
+        - !<MatrixTransform> {matrix: [1.66049100210843, -0.58764113878855, -0.0728498633198849, 0, -0.124550474521591, 1.13289989712596, -0.00834942260436947, 0, -0.0181507633549052, -0.100578898008007, 1.11872966136291, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec2020/linear
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: scene-linear
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<MatrixTransform> {matrix: [1.66049100210843, -0.58764113878855, -0.0728498633198849, 0, -0.124550474521591, 1.13289989712596, -0.00834942260436947, 0, -0.0181507633549052, -0.100578898008007, 1.11872966136291, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec2020/2.2
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentTransform> {value: 2.2, style: mirror}
+        - !<MatrixTransform> {matrix: [1.66049100210843, -0.58764113878855, -0.0728498633198849, 0, -0.124550474521591, 1.13289989712596, -0.00834942260436947, 0, -0.0181507633549052, -0.100578898008007, 1.11872966136291, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec2020/2.4
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentTransform> {value: 2.4, style: mirror}
+        - !<MatrixTransform> {matrix: [1.66049100210843, -0.58764113878855, -0.0728498633198849, 0, -0.124550474521591, 1.13289989712596, -0.00834942260436947, 0, -0.0181507633549052, -0.100578898008007, 1.11872966136291, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec2020/2.6
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentTransform> {value: 2.6, style: mirror}
+        - !<MatrixTransform> {matrix: [1.66049100210843, -0.58764113878855, -0.0728498633198849, 0, -0.124550474521591, 1.13289989712596, -0.00834942260436947, 0, -0.0181507633549052, -0.100578898008007, 1.11872966136291, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec2020/pq
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<FixedFunctionTransform> {style: Lin_TO_PQ, direction: inverse}
+        - !<MatrixTransform> {matrix: [1.66049100210843, -0.58764113878855, -0.0728498633198849, 0, -0.124550474521591, 1.13289989712596, -0.00834942260436947, 0, -0.0181507633549052, -0.100578898008007, 1.11872966136291, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec2020/hlg
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<BuiltinTransform> {style: CURVE - HLG-OETF-INVERSE}
+        - !<MatrixTransform> {matrix: [0.333333333333333, 0, 0, 0, 0, 0.333333333333333, 0, 0, 0, 0, 0.333333333333333, 0, 0, 0, 0, 1]}
+        - !<MatrixTransform> {matrix: [1.66049100210843, -0.58764113878855, -0.0728498633198849, 0, -0.124550474521591, 1.13289989712596, -0.00834942260436947, 0, -0.0181507633549052, -0.100578898008007, 1.11872966136291, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: p3/rec709
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentWithLinearTransform> {gamma: 2.22222222222222, offset: 0.099}
+        - !<MatrixTransform> {matrix: [1.22494017628056, -0.22494017628056, 0, 0, -0.0420569547096881, 1.04205695470969, 0, 0, -0.0196375545903344, -0.0786360455506318, 1.09827360014097, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: p3/srgb
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentWithLinearTransform> {gamma: 2.4, offset: 0.055}
+        - !<MatrixTransform> {matrix: [1.22494017628056, -0.22494017628056, 0, 0, -0.0420569547096881, 1.04205695470969, 0, 0, -0.0196375545903344, -0.0786360455506318, 1.09827360014097, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: p3/linear
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: scene-linear
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<MatrixTransform> {matrix: [1.22494017628056, -0.22494017628056, 0, 0, -0.0420569547096881, 1.04205695470969, 0, 0, -0.0196375545903344, -0.0786360455506318, 1.09827360014097, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: p3/2.2
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentTransform> {value: 2.2, style: mirror}
+        - !<MatrixTransform> {matrix: [1.22494017628056, -0.22494017628056, 0, 0, -0.0420569547096881, 1.04205695470969, 0, 0, -0.0196375545903344, -0.0786360455506318, 1.09827360014097, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: p3/2.4
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentTransform> {value: 2.4, style: mirror}
+        - !<MatrixTransform> {matrix: [1.22494017628056, -0.22494017628056, 0, 0, -0.0420569547096881, 1.04205695470969, 0, 0, -0.0196375545903344, -0.0786360455506318, 1.09827360014097, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: p3/2.6
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentTransform> {value: 2.6, style: mirror}
+        - !<MatrixTransform> {matrix: [1.22494017628056, -0.22494017628056, 0, 0, -0.0420569547096881, 1.04205695470969, 0, 0, -0.0196375545903344, -0.0786360455506318, 1.09827360014097, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: p3/pq
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<FixedFunctionTransform> {style: Lin_TO_PQ, direction: inverse}
+        - !<MatrixTransform> {matrix: [1.22494017628056, -0.22494017628056, 0, 0, -0.0420569547096881, 1.04205695470969, 0, 0, -0.0196375545903344, -0.0786360455506318, 1.09827360014097, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: p3/hlg
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<BuiltinTransform> {style: CURVE - HLG-OETF-INVERSE}
+        - !<MatrixTransform> {matrix: [0.333333333333333, 0, 0, 0, 0, 0.333333333333333, 0, 0, 0, 0, 0.333333333333333, 0, 0, 0, 0, 1]}
+        - !<MatrixTransform> {matrix: [1.22494017628056, -0.22494017628056, 0, 0, -0.0420569547096881, 1.04205695470969, 0, 0, -0.0196375545903344, -0.0786360455506318, 1.09827360014097, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec601/rec709
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentWithLinearTransform> {gamma: 2.22222222222222, offset: 0.099}
+        - !<MatrixTransform> {matrix: [0.93954206377324, 0.0501813568598677, 0.0102765793668927, 0, 0.0177722231435608, 0.965792862496904, 0.0164349143595347, 0, -0.00162159994318554, -0.00436974965973565, 1.00599134960292, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec601/srgb
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentWithLinearTransform> {gamma: 2.4, offset: 0.055}
+        - !<MatrixTransform> {matrix: [0.93954206377324, 0.0501813568598677, 0.0102765793668927, 0, 0.0177722231435608, 0.965792862496904, 0.0164349143595347, 0, -0.00162159994318554, -0.00436974965973565, 1.00599134960292, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec601/linear
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: scene-linear
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<MatrixTransform> {matrix: [0.93954206377324, 0.0501813568598677, 0.0102765793668927, 0, 0.0177722231435608, 0.965792862496904, 0.0164349143595347, 0, -0.00162159994318554, -0.00436974965973565, 1.00599134960292, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec601/2.2
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentTransform> {value: 2.2, style: mirror}
+        - !<MatrixTransform> {matrix: [0.93954206377324, 0.0501813568598677, 0.0102765793668927, 0, 0.0177722231435608, 0.965792862496904, 0.0164349143595347, 0, -0.00162159994318554, -0.00436974965973565, 1.00599134960292, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec601/2.4
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentTransform> {value: 2.4, style: mirror}
+        - !<MatrixTransform> {matrix: [0.93954206377324, 0.0501813568598677, 0.0102765793668927, 0, 0.0177722231435608, 0.965792862496904, 0.0164349143595347, 0, -0.00162159994318554, -0.00436974965973565, 1.00599134960292, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec601/2.6
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<ExponentTransform> {value: 2.6, style: mirror}
+        - !<MatrixTransform> {matrix: [0.93954206377324, 0.0501813568598677, 0.0102765793668927, 0, 0.0177722231435608, 0.965792862496904, 0.0164349143595347, 0, -0.00162159994318554, -0.00436974965973565, 1.00599134960292, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec601/pq
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<FixedFunctionTransform> {style: Lin_TO_PQ, direction: inverse}
+        - !<MatrixTransform> {matrix: [0.93954206377324, 0.0501813568598677, 0.0102765793668927, 0, 0.0177722231435608, 0.965792862496904, 0.0164349143595347, 0, -0.00162159994318554, -0.00436974965973565, 1.00599134960292, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: rec601/hlg
+    family: ""
+    equalitygroup: ""
+    bitdepth: 32f
+    isdata: false
+    encoding: sdr-video
+    allocation: uniform
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<BuiltinTransform> {style: CURVE - HLG-OETF-INVERSE}
+        - !<MatrixTransform> {matrix: [0.333333333333333, 0, 0, 0, 0, 0.333333333333333, 0, 0, 0, 0, 0.333333333333333, 0, 0, 0, 0, 1]}
+        - !<MatrixTransform> {matrix: [0.93954206377324, 0.0501813568598677, 0.0102765793668927, 0, 0.0177722231435608, 0.965792862496904, 0.0164349143595347, 0, -0.00162159994318554, -0.00436974965973565, 1.00599134960292, 0, 0, 0, 0, 1]}
+

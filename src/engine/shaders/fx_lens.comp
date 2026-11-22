@@ -1,0 +1,12 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Lens correction: each pixel taken from further out or further in by
+// 1 + k1 r² + k2 r⁴ (r: its distance from the centre over the half
+// diagonal). Values: k1, k2, then the centre as shares of width and height.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec2 size = vec2(pc.size), centre = vec2(P(2), P(3)) * size;
+    vec2 off = vec2(p) + 0.5 - centre;
+    float r2 = dot(off, off) * 4.0 / dot(size, size);
+    return sampleAt(centre + off * (1.0 + P(0) * r2 + P(1) * r2 * r2));
+}

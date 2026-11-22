@@ -1,0 +1,108 @@
+#version 450
+// Draw one layer onto the canvas: a box placed, rotated about its centre and
+// cropped (see Layer in frame.h), resampled with the layer's filter,
+// straight-alpha "over" with the layer opacity and one pixel of edge
+// coverage. The CPU twin in cpu_engine.cpp does the same arithmetic.
+#extension GL_GOOGLE_include_directive : enable
+#include "common.glsl"
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(binding = 0) uniform sampler2D src;
+layout(binding = 1, rgba32f) uniform image2D canvas;
+layout(push_constant) uniform Push {
+    vec4 rect;        // x, y, w, h: the box in canvas pixels, before rotation
+    vec4 crop;        // u0, v0, u1, v1: the part of the source shown
+    vec2 rot;         // cos, sin of the rotation
+    ivec2 origin;     // first canvas pixel this dispatch covers
+    ivec2 canvasSize;
+    float opacity;
+    int filterKind;   // 1 bilinear, 2 bicubic, 3 lanczos, 4 area, 5 point (never auto)
+    vec2 footprint;   // source texels per canvas pixel, per source axis
+    int blend;        // BlendMode
+    int blendSpace;   // 0 linear, 1 display-encoded sRGB
+    int pad1, pad2;
+} pc;
+
+// Taps stay inside the crop, so a cut-away edge never bleeds in.
+ivec2 tapLo, tapHi;
+vec4 tap(ivec2 t) { return alphaTap(src, clamp(t, tapLo, tapHi)); }
+
+vec4 kernel(vec2 at, int radius, bool lanczos) {
+    vec2 p = at - 0.5;
+    ivec2 i = ivec2(floor(p));
+    vec2 f = p - vec2(i);
+    vec4 sum = vec4(0.0);
+    float wsum = 0.0;
+    for (int ky = 1 - radius; ky <= radius; ++ky) {
+        float wy = lanczos ? lanczosWeight(f.y - float(ky)) : cubicWeight(f.y - float(ky));
+        for (int kx = 1 - radius; kx <= radius; ++kx) {
+            float w = wy * (lanczos ? lanczosWeight(f.x - float(kx)) : cubicWeight(f.x - float(kx)));
+            sum += w * tap(i + ivec2(kx, ky));
+            wsum += w;
+        }
+    }
+    return sum / wsum;
+}
+
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy) + pc.origin;
+    if (p.x < 0 || p.y < 0 || p.x >= pc.canvasSize.x || p.y >= pc.canvasSize.y) return;
+    vec2 half_ = pc.rect.zw * 0.5;
+    vec2 d = vec2(p) + 0.5 - (pc.rect.xy + half_);
+    // Into the box's own frame: rotate back by the layer's rotation.
+    vec2 q = vec2(pc.rot.x * d.x + pc.rot.y * d.y, -pc.rot.y * d.x + pc.rot.x * d.y) + half_;
+    float edge = min(min(q.x, pc.rect.z - q.x), min(q.y, pc.rect.w - q.y));
+    float cover = clamp(edge + 0.5, 0.0, 1.0);
+    if (cover <= 0.0) return;
+    vec2 size = vec2(textureSize(src, 0));
+    vec2 t = q / pc.rect.zw;
+    vec2 uv = mix(pc.crop.xy, pc.crop.zw, t);
+    vec2 cropLo = min(pc.crop.xy, pc.crop.zw), cropHi = max(pc.crop.xy, pc.crop.zw);
+    tapLo = ivec2(floor(cropLo * size + 0.001));
+    tapHi = max(tapLo, ivec2(ceil(cropHi * size - 0.001)) - 1);
+    vec2 texel = 0.5 / size;
+    vec2 lo = cropLo + texel;
+    vec2 hi = max(lo, cropHi - texel);
+    vec4 s;
+    if (pc.filterKind == 2) {
+        s = kernel(uv * size, 2, false);
+    } else if (pc.filterKind == 3) {
+        s = kernel(uv * size, 3, true);
+    } else if (pc.filterKind == 4) {
+        // Area: the mean of an even grid of samples over the pixel's footprint.
+        int nx = areaTaps(pc.footprint.x), ny = areaTaps(pc.footprint.y);
+        vec2 step = pc.footprint / size;
+        s = vec4(0.0);
+        for (int y = 0; y < ny; ++y)
+            for (int x = 0; x < nx; ++x) {
+                vec2 o = (vec2(float(x), float(y)) + 0.5) / vec2(float(nx), float(ny)) - 0.5;
+                s += alphaBilinear(src, clamp(uv + o * step * sign(pc.crop.zw - pc.crop.xy), lo, hi));
+            }
+        s /= float(nx * ny);
+    } else if (pc.filterKind == 5) {
+        s = tap(ivec2(floor(uv * size)));
+    } else {
+        s = alphaBilinear(src, clamp(uv, lo, hi));
+    }
+    s = straightSample(s);
+    float a = s.a * pc.opacity * cover;
+    if (a <= 0.0) return;  // nothing of the layer here: the canvas stays exactly as it is
+    vec4 dst = imageLoad(canvas, p);
+    bool srgb = pc.blendSpace == 1;
+    vec3 colour = srgb ? linearToSrgb(s.rgb) : s.rgb;
+    vec3 backdrop = srgb ? linearToSrgb(dst.rgb) : dst.rgb;
+    vec3 top = colour;
+    if (pc.blend != 0) {
+        // Blend on the timeline's codes, what the viewer shows, then back to linear.
+        vec3 dg = srgb ? backdrop : rec709Encode(backdrop), sg = srgb ? colour : rec709Encode(colour);
+        top = vec3(blendChannel(pc.blend, dg.r, sg.r), blendChannel(pc.blend, dg.g, sg.g), blendChannel(pc.blend, dg.b, sg.b));
+        if (!srgb) top = rec709Decode(top);
+        top = colour * (1.0 - dst.a) + top * dst.a;
+    }
+    float remaining = dst.a * (1.0 - a);
+    float outAlpha = a + remaining;
+    // Nested studio textures use the same straight-alpha representation as sources.
+    vec3 rgb = outAlpha > 0.0 ? (top * a + backdrop * remaining) / outAlpha : vec3(0.0);
+    if (srgb) rgb = srgbToLinear(rgb);
+    vec4 o = vec4(rgb, outAlpha);
+    imageStore(canvas, p, o);
+}

@@ -1,0 +1,15 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Fisheye: a radial bulge (value 0, its strength), or with value 1 set its
+// undoing; value 2 set fills the frame instead of showing the bent edges.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec2 c = vec2(pc.size) * 0.5;
+    float half_ = length(c);
+    vec2 d = (vec2(p) + 0.5 - c) / half_;
+    float k = P(0) * (P(1) > 0.5 ? -0.5 : 0.8);
+    float r2 = dot(d, d);
+    float scale = 1.0 + k * r2;
+    if (P(2) > 0.5) scale /= 1.0 + max(k, 0.0);  // crop: the corners stay inside
+    return sampleAt(c + d * scale * half_);
+}

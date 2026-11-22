@@ -1,0 +1,11 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// A colour-managed clip's colour controls, as the editor applies them to its
+// working (linear) values: ((luma + s·(v − luma)) − ½)·c + ½ + b, unclamped.
+// Values: brightness b, contrast c, saturation s.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec4 c = at(p);
+    float lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+    return vec4(((vec3(lum) + P(2) * (c.rgb - vec3(lum))) - 0.5) * P(1) + 0.5 + P(0), c.a);
+}

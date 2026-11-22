@@ -1,0 +1,16 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Directional blur: the mean along a line through the pixel, value 0 pixels
+// (of a 1080-line picture) to each side, at value 1 degrees; at most 65
+// samples, spread evenly.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    float reach = P(0) * float(pc.size.y) / 1080.0;
+    if (reach < 0.5) return at(p);
+    float a = radians(P(1));
+    vec2 dir = vec2(cos(a), -sin(a));
+    int n = min(32, int(ceil(reach)));
+    vec4 s = vec4(0.0);
+    for (int i = -n; i <= n; ++i) s += assoc(sampleAt(vec2(p) + 0.5 + dir * (reach * float(i) / float(n))));
+    return straightSample(s / float(2 * n + 1));
+}

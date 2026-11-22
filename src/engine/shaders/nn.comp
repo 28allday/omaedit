@@ -1,0 +1,276 @@
+#version 450
+// One pass of the person-finding network (see Pass in matting.h). The CPU
+// twin, matting::run, does the same arithmetic on the same numbers.
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_control_flow_attributes : require
+#include "common.glsl"
+layout(local_size_x = 64) in;
+layout(binding = 0) uniform sampler2D src;                     // the source picture
+layout(std430, binding = 1) buffer Arena { float a[]; };      // the tensors
+layout(std430, binding = 2) readonly buffer Weights { float wt[]; };
+layout(std430, binding = 2) readonly buffer Weights4 { vec4 wt4[]; };  // the same, four at a time
+layout(binding = 3, rgba32f) uniform writeonly image2D matte;
+layout(push_constant) uniform Push {
+    int op, inW, inH, outW, outH;
+    int in0, c0, in1, c1, in2, c2;
+    int out_, cout, k, stride, pad, depthwise, act, actUntil;
+    int weights, bias, residual, splits, partial;
+} pc;
+
+shared float sums[64];
+// Pixels in a row each thread of a full Conv works out (matting.cpp counts on it).
+const int PX = 4;
+
+float activate(int c, float v) {
+    if (c >= pc.actUntil) return v;
+    if (pc.act == 1) return max(v, 0.0);
+    if (pc.act == 2) return clamp(v, 0.0, 6.0);
+    if (pc.act == 3) return 1.0 / (1.0 + exp(-v));
+    return v;
+}
+// Input channel c's plane: the views read as one.
+int plane(int c, int size) {
+    if (c < pc.c0) return pc.in0 + c * size;
+    if (c < pc.c0 + pc.c1) return pc.in1 + (c - pc.c0) * size;
+    return pc.in2 + (c - pc.c0 - pc.c1) * size;
+}
+void finish(int oc, int pix, int size, float v) {
+    v += wt[pc.bias + oc];
+    if (pc.residual >= 0) v += a[pc.residual + oc * size + pix];
+    a[pc.out_ + oc * size + pix] = activate(oc, v);
+}
+// The whole workgroup's sum of each thread's v.
+float workgroupSum(float v) {
+    uint t = gl_LocalInvocationID.x;
+    sums[t] = v;
+    barrier();
+    for (uint s = 32u; s > 0u; s >>= 1) {
+        if (t < s) sums[t] += sums[t + s];
+        barrier();
+    }
+    float total = sums[0];
+    barrier();
+    return total;
+}
+
+// A full Conv's sums for PX pixels in a row (from x, row y) and output
+// channels 8g..8g+7, over input channels first..last. Its weights are eight
+// output channels at a time, two vectors for each input channel and tap.
+vec4 lo[PX], hi[PX];
+// Stride 1 and a k known here: each input row is read once for every tap
+// across it, and every index is fixed once the loops are unrolled.
+void denseRows(const int K, int x, int y, int g, int cin, int first, int last) {
+    int Pin = pc.inW * pc.inH, group = pc.weights / 4 + g * cin * K * K * 2;
+    for (int ic = first; ic < last; ++ic) {
+        int base = plane(ic, Pin), w = group + ic * K * K * 2;
+        [[unroll]] for (int ky = 0; ky < K; ++ky) {
+            int iy = y - K / 2 + ky;
+            if (iy < 0 || iy >= pc.inH) continue;
+            int row = base + iy * pc.inW;
+            float seg[PX + 4];
+            [[unroll]] for (int i = 0; i < PX - 1 + K; ++i) {
+                int ix = x - K / 2 + i;
+                seg[i] = ix >= 0 && ix < pc.inW ? a[row + ix] : 0.0;
+            }
+            [[unroll]] for (int kx = 0; kx < K; ++kx) {
+                vec4 wl = wt4[w + (ky * K + kx) * 2], wh = wt4[w + (ky * K + kx) * 2 + 1];
+                [[unroll]] for (int p = 0; p < PX; ++p) {
+                    lo[p] += seg[p + kx] * wl;
+                    hi[p] += seg[p + kx] * wh;
+                }
+            }
+        }
+    }
+}
+// Any stride and size: each tap read on its own.
+void denseAny(int x, int y, int g, int cin, int first, int last) {
+    int Pin = pc.inW * pc.inH, kk = pc.k * pc.k, group = pc.weights / 4 + g * cin * kk * 2;
+    for (int ic = first; ic < last; ++ic) {
+        int base = plane(ic, Pin), w = group + ic * kk * 2;
+        for (int ky = 0; ky < pc.k; ++ky) {
+            int iy = y * pc.stride - pc.pad + ky;
+            if (iy < 0 || iy >= pc.inH) continue;
+            int row = base + iy * pc.inW;
+            for (int kx = 0; kx < pc.k; ++kx) {
+                vec4 wl = wt4[w + (ky * pc.k + kx) * 2], wh = wt4[w + (ky * pc.k + kx) * 2 + 1];
+                [[unroll]] for (int p = 0; p < PX; ++p) {
+                    int ix = (x + p) * pc.stride - pc.pad + kx;
+                    float v = ix >= 0 && ix < pc.inW ? a[row + ix] : 0.0;
+                    lo[p] += v * wl;
+                    hi[p] += v * wh;
+                }
+            }
+        }
+    }
+}
+
+// A full Conv's eight output channels 8g.. for PX pixels from (x, y): its
+// share of the input channels summed, then finished or left for Sum.
+void dense(int g, int x, int y, int P) {
+    int cin = pc.c0 + pc.c1 + pc.c2, share = (cin + pc.splits - 1) / pc.splits;
+    int s = int(gl_WorkGroupID.z), first = s * share, last = min(cin, first + share);
+    [[unroll]] for (int p = 0; p < PX; ++p) { lo[p] = vec4(0.0); hi[p] = vec4(0.0); }
+    if (pc.stride == 1 && pc.k == 1) denseRows(1, x, y, g, cin, first, last);
+    else if (pc.stride == 1 && pc.k == 3) denseRows(3, x, y, g, cin, first, last);
+    else if (pc.stride == 1 && pc.k == 5) denseRows(5, x, y, g, cin, first, last);
+    else denseAny(x, y, g, cin, first, last);
+    int oc0 = g * 8;
+    // Fixed bounds throughout, so the sums stay in registers.
+    [[unroll]] for (int p = 0; p < PX; ++p) {
+        if (x + p >= pc.outW) continue;
+        int at = y * pc.outW + x + p;
+        [[unroll]] for (int o = 0; o < 8; ++o) {
+            if (oc0 + o >= pc.cout) continue;
+            float v = o < 4 ? lo[p][o] : hi[p][o - 4];
+            if (pc.splits == 1) finish(oc0 + o, at, P, v);
+            else a[pc.partial + (s * pc.cout + oc0 + o) * P + at] = v;
+        }
+    }
+}
+
+void main() {
+    int P = pc.outW * pc.outH, Pin = pc.inW * pc.inH;
+    int pix = int(gl_GlobalInvocationID.x);
+    int t = int(gl_LocalInvocationID.x);
+    if (pc.op == 6) {
+        // Pool: a workgroup a channel.
+        int c = int(gl_WorkGroupID.x);
+        float s = 0.0;
+        for (int i = t; i < Pin; i += 64) s += a[pc.in0 + c * Pin + i];
+        s = workgroupSum(s);
+        if (t == 0) a[pc.out_ + c] = s / float(Pin);
+        return;
+    }
+    if (pc.op == 4) {
+        // NormStats: a workgroup a chunk of a channel; its count, mean and squared deviations.
+        int chunk = int(gl_WorkGroupID.x), c = pc.actUntil + int(gl_WorkGroupID.y);
+        int size = (P + pc.splits - 1) / pc.splits, first = chunk * size, last = min(P, first + size);
+        int base = pc.out_ + c * P;
+        float s = 0.0;
+        for (int i = first + t; i < last; i += 64) s += a[base + i];
+        float n = float(max(last - first, 0)), mean = n > 0.0 ? workgroupSum(s) / n : workgroupSum(s);
+        float d = 0.0;
+        for (int i = first + t; i < last; i += 64) d += (a[base + i] - mean) * (a[base + i] - mean);
+        d = workgroupSum(d);
+        if (t == 0) {
+            int at = pc.in1 + ((c - pc.actUntil) * pc.splits + chunk) * 3;
+            a[at] = n;
+            a[at + 1] = mean;
+            a[at + 2] = d;
+        }
+        return;
+    }
+    if (pc.op == 9) {
+        // NormMerge: a thread a channel, the chunks taken together (Chan et al.).
+        int c = pix;
+        if (c >= pc.cout - pc.actUntil) return;
+        float n = 0.0, mean = 0.0, m2 = 0.0;
+        for (int k = 0; k < pc.splits; ++k) {
+            int at = pc.in1 + (c * pc.splits + k) * 3;
+            float nb = a[at], delta = a[at + 1] - mean, total = n + nb;
+            if (nb <= 0.0) continue;
+            mean += delta * nb / total;
+            m2 += a[at + 2] + delta * delta * n * nb / total;
+            n = total;
+        }
+        a[pc.partial + 2 * c] = mean;
+        a[pc.partial + 2 * c + 1] = 1.0 / sqrt(m2 / n + 1e-5);
+        return;
+    }
+    if (pc.op == 1 && pc.depthwise == 0) {
+        // A full Conv: PX pixels in a row by eight output channels a thread.
+        // A workgroup's threads share their eight (a row of workgroups each)
+        // unless the picture has fewer runs than a workgroup has threads:
+        // then the eights follow on in x, so its workgroups are full ones too.
+        int runs = (pc.outW + PX - 1) / PX, tiles = runs * pc.outH;
+        if (tiles >= 64) {
+            if (pix < tiles) dense(int(gl_WorkGroupID.y), pix % runs * PX, pix / runs, P);
+        } else if (pix < tiles * ((pc.cout + 7) / 8)) {
+            int r = pix % tiles;
+            dense(pix / tiles, r % runs * PX, r / runs, P);
+        }
+        return;
+    }
+    if (pix >= P) return;
+    int x = pix % pc.outW, y = pix / pc.outW;
+
+    if (pc.op == 0) {
+        // Input: the mean of the source pixels each covers, display-encoded, −1..1.
+        int y0 = y * pc.inH / pc.outH, y1 = max(y0 + 1, ((y + 1) * pc.inH + pc.outH - 1) / pc.outH);
+        int x0 = x * pc.inW / pc.outW, x1 = max(x0 + 1, ((x + 1) * pc.inW + pc.outW - 1) / pc.outW);
+        ivec2 hi = textureSize(src, 0) - 1;
+        vec3 sum = vec3(0.0);
+        for (int j = y0; j < y1; ++j)
+            for (int i = x0; i < x1; ++i) {
+                vec4 s = texelFetch(src, min(ivec2(i, j), hi), 0);
+                sum += s.rgb * s.a;
+            }
+        vec3 e = linearToSrgb(sum / float((y1 - y0) * (x1 - x0)));
+        for (int c = 0; c < 3; ++c) a[pc.out_ + c * P + pix] = e[c] * 2.0 - 1.0;
+    } else if (pc.op == 1) {
+        // A depthwise Conv: eight channels a thread; 3 × 3 (MobileNetV2's) unrolled.
+        int oc0 = int(gl_WorkGroupID.y) * 8, kk = pc.k * pc.k;
+        int iy0 = y * pc.stride - pc.pad, ix0 = x * pc.stride - pc.pad;
+        float acc[8] = float[8](0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        if (pc.k == 3 && oc0 + 8 <= pc.cout) {
+            int off[9];
+            bool inside[9];
+            [[unroll]] for (int t = 0; t < 9; ++t) {
+                int iy = iy0 + t / 3, ix = ix0 + t % 3;
+                inside[t] = iy >= 0 && iy < pc.inH && ix >= 0 && ix < pc.inW;
+                off[t] = iy * pc.inW + ix;
+            }
+            [[unroll]] for (int o = 0; o < 8; ++o) {
+                int base = plane(oc0 + o, Pin), w = pc.weights + (oc0 + o) * 9;
+                [[unroll]] for (int t = 0; t < 9; ++t)
+                    if (inside[t]) acc[o] += a[base + off[t]] * wt[w + t];
+            }
+        } else {
+            for (int o = 0; o < 8; ++o) {
+                int c = oc0 + o;
+                if (c >= pc.cout) break;
+                int base = plane(c, Pin), w = pc.weights + c * kk;
+                for (int ky = 0; ky < pc.k; ++ky) {
+                    int iy = iy0 + ky;
+                    if (iy < 0 || iy >= pc.inH) continue;
+                    for (int kx = 0; kx < pc.k; ++kx) {
+                        int ix = ix0 + kx;
+                        if (ix < 0 || ix >= pc.inW) continue;
+                        acc[o] += a[base + iy * pc.inW + ix] * wt[w + ky * pc.k + kx];
+                    }
+                }
+            }
+        }
+        for (int o = 0; o < 8 && oc0 + o < pc.cout; ++o) finish(oc0 + o, pix, P, acc[o]);
+    } else if (pc.op == 2) {
+        // Sum: a split convolution's shares, one output channel a row of workgroups.
+        int oc = int(gl_WorkGroupID.y);
+        float v = 0.0;
+        for (int s = 0; s < pc.splits; ++s) v += a[pc.partial + (s * pc.cout + oc) * P + pix];
+        finish(oc, pix, P, v);
+    } else if (pc.op == 3) {
+        // Resize, as PyTorch's bilinear with half-pixel centres.
+        int c = int(gl_WorkGroupID.y), base = pc.in0 + c * Pin;
+        float fy = max(float(pc.inH) / float(pc.outH) * (float(y) + 0.5) - 0.5, 0.0);
+        float fx = max(float(pc.inW) / float(pc.outW) * (float(x) + 0.5) - 0.5, 0.0);
+        int y0 = int(fy), x0 = int(fx);
+        int y1 = y0 + (y0 < pc.inH - 1 ? 1 : 0), x1 = x0 + (x0 < pc.inW - 1 ? 1 : 0);
+        float ty = fy - float(y0), tx = fx - float(x0);
+        float top = a[base + y0 * pc.inW + x0] + (a[base + y0 * pc.inW + x1] - a[base + y0 * pc.inW + x0]) * tx;
+        float bottom = a[base + y1 * pc.inW + x0] + (a[base + y1 * pc.inW + x1] - a[base + y1 * pc.inW + x0]) * tx;
+        a[pc.out_ + c * P + pix] = top + (bottom - top) * ty;
+    } else if (pc.op == 5) {
+        // NormApply.
+        int c = pc.actUntil + int(gl_WorkGroupID.y), i = pc.out_ + c * P + pix;
+        float mean = a[pc.partial + 2 * (c - pc.actUntil)], inv = a[pc.partial + 2 * (c - pc.actUntil) + 1];
+        a[i] = max((a[i] - mean) * inv, 0.0);
+    } else if (pc.op == 7) {
+        // Scale.
+        int c = int(gl_WorkGroupID.y);
+        a[pc.in0 + c * P + pix] *= a[pc.in1 + c];
+    } else if (pc.op == 8) {
+        // Output.
+        float m = a[pc.in0 + pix];
+        imageStore(matte, ivec2(x, y), vec4(m, m, m, 1.0));
+    }
+}

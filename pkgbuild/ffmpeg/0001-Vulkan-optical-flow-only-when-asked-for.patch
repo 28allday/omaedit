@@ -1,0 +1,28 @@
+From: 28allday
+Subject: [PATCH] hwcontext_vulkan: enable VK_NV_optical_flow only when asked for
+
+NVIDIA's driver loads and initialises CUDA when a device is created with
+VK_NV_optical_flow, and CUDA then keeps the GPU out of runtime D3 until the
+process exits, even after the device is destroyed. Programs that create a
+device for encoding, never optical flow, kept a laptop's discrete GPU awake.
+Enable it only when listed in the device_extensions option.
+---
+diff --git a/libavutil/hwcontext_vulkan.c b/libavutil/hwcontext_vulkan.c
+index 0ddfafb..0512096 100644
+--- a/libavutil/hwcontext_vulkan.c
++++ b/libavutil/hwcontext_vulkan.c
+@@ -1013,6 +1013,14 @@ static int check_extensions(AVHWDeviceContext *ctx, int dev, AVDictionary *opts,
+             !vulkan_device_has_rebar(ctx))
+             continue;
+ 
++        /* NVIDIA's driver implements optical flow through CUDA: enabling it
++         * starts CUDA in the process, which then holds the GPU awake until
++         * the process ends, so a laptop's discrete GPU cannot power down
++         * after the device is gone. Only when asked for by name. */
++        if (dev && !strcmp(tstr, VK_NV_OPTICAL_FLOW_EXTENSION_NAME) &&
++            !(user_exts_str && strstr(user_exts_str, tstr)))
++            continue;
++
+         if (dev &&
+             ((debug_mode == FF_VULKAN_DEBUG_VALIDATE) ||
+              (debug_mode == FF_VULKAN_DEBUG_PRINTF) ||

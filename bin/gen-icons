@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""Regenerate src/qml/OmaEdit/Ui/Icons.qml from the SVGs in src/icons/.
+
+Icons.qml stores each Lucide icon's inner elements as one string so Icon.qml
+can bake a colour into a data URI (the offscreen renderer has no shader
+tint). Add an SVG to src/icons/, run this, and the name is usable.
+"""
+import glob
+import os
+import re
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+os.chdir(ROOT)
+
+entries = []
+for path in sorted(glob.glob('src/icons/*.svg')):
+    name = os.path.basename(path)[:-4]
+    svg = open(path).read()
+    body = svg[svg.index('>', svg.index('<svg')) + 1:svg.rindex('</svg>')]
+    # One line, one space between elements, no attribute whitespace runs.
+    body = re.sub(r'\s+', ' ', body).strip()
+    body = body.replace(' />', '/>').replace('> <', '><')
+    entries.append(f'        "{name}": \'{body}\',')
+
+text = '''pragma Singleton
+
+import QtQuick
+
+// Icon geometry, vendored from Lucide 1.39.0 (ISC — see src/icons/LICENSE.lucide).
+// Stored as path data rather than as SVG files so Icon can bake the stroke
+// colour into a data URI: that tints without a shader, which the offscreen
+// renderer used for screenshots and tests does not provide.
+//
+// Generated — do not hand-edit. Regenerate with ./bin/gen-icons from the SVGs
+// in src/icons/.
+QtObject {
+    readonly property var shapes: ({
+''' + '\n'.join(entries) + '''
+    })
+}
+'''
+open('src/qml/OmaEdit/Ui/Icons.qml', 'w').write(text)
+print(f'wrote Icons.qml ({len(entries)} icons)')

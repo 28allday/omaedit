@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.omatools.omaedit</id>
+  <name>OmaEdit</name>
+  <summary>Video editor for Omarchy</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <developer id="org.omatools">
+    <name>Gavin Nugent</name>
+  </developer>
+  <description>
+    <p>
+      OmaEdit is a video editor with five pages: Media, Edit, Colour, Audio and
+      Deliver. Bring in your footage, cut it on a multi-track timeline, correct
+      its colour, mix its sound and deliver the finished film.
+    </p>
+    <p>
+      It plays and renders on the graphics card through Vulkan, with a path on
+      the processor for every step, and manages colour through OpenColorIO.
+    </p>
+  </description>
+  <launchable type="desktop-id">omaedit.desktop</launchable>
+  <url type="homepage">https://www.omatools.org/</url>
+  <url type="help">https://www.omatools.org/omaedit/help/</url>
+  <url type="bugtracker">https://github.com/28allday/omaedit/issues</url>
+  <url type="vcs-browser">https://github.com/28allday/omaedit</url>
+  <categories>
+    <category>AudioVideo</category>
+    <category>Video</category>
+    <category>AudioVideoEditing</category>
+  </categories>
+  <provides>
+    <binary>omaedit</binary>
+    <mediatype>application/x-omaedit-project</mediatype>
+  </provides>
+  <releases>
+    <release version="0.2.0" date="2026-11-21"/>
+  </releases>
+  <content_rating type="oars-1.1"/>
+</component>

@@ -1,0 +1,38 @@
+#!/usr/bin/env sh
+set -eu
+
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+BUILD_DIR="$ROOT/build"
+
+if command -v qmake6 >/dev/null 2>&1; then
+  QMAKE=qmake6
+elif command -v qmake >/dev/null 2>&1; then
+  QMAKE=qmake
+else
+  echo "qmake6 or qmake is required to build omaedit." >&2
+  exit 1
+fi
+
+JOBS="${OMAEDIT_BUILD_JOBS:-$(nproc 2>/dev/null || echo 1)}"
+
+# FFmpeg 9.1 for the engine's Vulkan video, while the system's is older
+# (nothing otherwise).
+"$ROOT/bin/build-ffmpeg"
+# The extra qmake arguments, as positional ones: a path with spaces stays whole.
+set --
+CARRIED="$ROOT/build/ffmpeg/usr/lib/omaedit/ffmpeg"
+if [ -d "$CARRIED/lib/pkgconfig" ]; then
+  PKG_CONFIG_PATH="$CARRIED/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+  export PKG_CONFIG_PATH
+  set -- "CONFIG+=carried_ffmpeg" "CARRIED_FFMPEG=$CARRIED"
+fi
+# For the package (its PKGBUILD sets this): no development library path.
+if [ -n "${OMAEDIT_PACKAGE:-}" ]; then set -- "$@" "CONFIG+=packaged"; fi
+
+mkdir -p "$BUILD_DIR"
+cd "$BUILD_DIR"
+
+"$QMAKE" "$ROOT/omaedit.pro" "$@"
+make -j"$JOBS"
+
+echo "Built $BUILD_DIR/omaedit"

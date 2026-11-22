@@ -1,0 +1,11 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Sepia: the picture's luma kept, its colour replaced by one tone, Cb and Cr
+// given as 8-bit codes (values 0 and 1, 128 neutral).
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec4 c = at(p);
+    float y = lumaOf(display(c.rgb)), pb = (P(0) - 128.0) / 255.0, pr = (P(1) - 128.0) / 255.0;
+    float r = y + 1.5748 * pr, b = y + 1.8556 * pb, g = (y - 0.2126 * r - 0.0722 * b) / 0.7152;
+    return vec4(light(vec3(r, g, b)), c.a);
+}

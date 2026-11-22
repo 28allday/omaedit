@@ -1,0 +1,16 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Corner pin: the picture drawn into the quadrilateral of its four corners
+// (values 0–7: top left, top right, bottom right, bottom left, x then y, as
+// shares of the picture), outside it transparent. The inverse of the square-
+// to-quad perspective map (P(8)–P(16), worked out on the CPU: fxCornerPin)
+// takes each pixel back to the picture.
+#include "fx_common.glsl"
+vec4 effect(ivec2 p) {
+    vec2 q = (vec2(p) + 0.5) / vec2(pc.size);
+    float w = P(14) * q.x + P(15) * q.y + P(16);
+    if (abs(w) < 1e-8) return vec4(0.0);
+    vec2 uv = vec2(P(8) * q.x + P(9) * q.y + P(10), P(11) * q.x + P(12) * q.y + P(13)) / w;
+    if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return vec4(0.0);
+    return sampleAt(uv * vec2(pc.size));
+}

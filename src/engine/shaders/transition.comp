@@ -1,0 +1,175 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#include "common.glsl"
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(binding = 0) uniform sampler2D oldPicture;
+layout(binding = 1, rgba32f) uniform writeonly image2D dst;
+layout(binding = 2) uniform sampler2D nextPicture;
+layout(push_constant) uniform Push {
+    ivec2 size; int type; float progress;
+    int side; int mask; int invert; float softness;
+    float colourPoint; float pad0, pad1, pad2;
+    vec4 colour;
+    vec4 matte;
+} pc;
+
+// Word for word as frame.h: GPU atan and sin are too loose to agree with
+// the CPU, and cell edges come from integer sums, not floored ratios.
+float wipeTurns(float x, float y) {
+    float ax = abs(x), ay = abs(y);
+    if (ax == 0.0 && ay == 0.0) return 0.0;
+    float a = ax > ay ? ay / ax : ax / ay, s = a * a;
+    float r = ((-0.0464964749 * s + 0.15931422) * s - 0.327622764) * s * a + a;
+    if (ay > ax) r = 1.57079637 - r;
+    if (x < 0.0) r = 3.14159274 - r;
+    if (y < 0.0) r = 6.28318548 - r;
+    return r / 6.28318548;
+}
+float wipeSin(float t) {
+    t -= floor(t);
+    float s = t < 0.5 ? t : t - 1.0;
+    if (s > 0.25) s = 0.5 - s;
+    else if (s < -0.25) s = -0.5 - s;
+    float z = s * 6.28318548, z2 = z * z;
+    return z * (1.0 + z2 * (-0.166666672 + z2 * (0.00833333377 + z2 * (-0.000198412701 + z2 * 2.75573188e-06))));
+}
+int wipeCell(int p, int cells, int size, out float inside) {
+    int q = (2 * p + 1) * cells, range = 2 * size;
+    inside = float(q % range) / float(range);
+    return q / range;
+}
+float wipeLattice(int x, int y, uint seed) {
+    uint h = uint(x) * 0x8da6b343u ^ uint(y) * 0xd8163841u ^ seed * 0xcb1ab31fu;
+    h ^= h >> 15; h *= 0x2c1b3c6du; h ^= h >> 12; h *= 0x297a2d39u; h ^= h >> 15;
+    return float(h >> 8) * (1.0 / 16777216.0);
+}
+float wipeNoise(int px, int py, int size, int cells, uint seed) {
+    float fx, fy;
+    int cx = wipeCell(px, cells, size, fx), cy = wipeCell(py, cells, size, fy);
+    fx = fx * fx * (3.0 - 2.0 * fx);
+    fy = fy * fy * (3.0 - 2.0 * fy);
+    float a = wipeLattice(cx, cy, seed), b = wipeLattice(cx + 1, cy, seed);
+    float c = wipeLattice(cx, cy + 1, seed), d = wipeLattice(cx + 1, cy + 1, seed);
+    float top = a + (b - a) * fx, bottom = c + (d - c) * fx;
+    return top + (bottom - top) * fy;
+}
+float wipeClamp(float v) { return v < 0.0 ? 0.0 : v > 1.0 ? 1.0 : v; }
+float wipeMaskValue(int mask, int px, int py, int width, int height) {
+    float fx = (float(px) + 0.5) / float(width), fy = (float(py) + 0.5) / float(height);
+    float hw = float(width) * 0.5, hh = float(height) * 0.5;
+    float dx = float(px) + 0.5 - hw, dy = float(py) + 0.5 - hh;
+    float radius = sqrt(hw * hw + hh * hh), r = sqrt(dx * dx + dy * dy) / radius;
+    int columns = 8, rows = max(1, (8 * height + width / 2) / width);
+    int shorter = min(width, height);
+    float ix, iy;
+    if (mask == 0) return fx;
+    if (mask == 1) return 1.0 - fx;
+    if (mask == 2) return fy;
+    if (mask == 3) return 1.0 - fy;
+    if (mask == 4) return (fx + fy) * 0.5;
+    if (mask == 5) return (1.0 - fx + fy) * 0.5;
+    if (mask == 6) return (fx + 1.0 - fy) * 0.5;
+    if (mask == 7) return (2.0 - fx - fy) * 0.5;
+    if (mask == 8) return wipeClamp(abs(dx) / hw);
+    if (mask == 9) return wipeClamp(abs(dy) / hh);
+    if (mask == 10) return wipeClamp(abs(fx - fy));
+    if (mask == 11) return wipeClamp(r);
+    if (mask == 12) return wipeClamp(max(abs(dx) / hw, abs(dy) / hh));
+    if (mask == 13) return wipeClamp((abs(dx) / hw + abs(dy) / hh) * 0.5);
+    if (mask == 14) return wipeTurns(-dy, dx);
+    if (mask == 15) return wipeClamp(1.0 - 2.0 * wipeTurns(dx, float(py) + 0.5));
+    if (mask == 16) { wipeCell(py, 10, height, iy); return iy; }
+    if (mask == 17) { wipeCell(px, 10, width, ix); return ix; }
+    if (mask == 18) {
+        int period = max(4, (width + height) / 12);
+        return float((2 * (px + py) + 2) % (2 * period)) / float(2 * period);
+    }
+    if (mask == 19) {
+        int cx = wipeCell(px, columns, width, ix), cy = wipeCell(py, rows, height, iy);
+        return (float((cx + cy) & 1) + ix) * 0.5;
+    }
+    if (mask == 20) {
+        wipeCell(px, columns, width, ix); wipeCell(py, rows, height, iy);
+        return wipeClamp(max(abs(ix - 0.5), abs(iy - 0.5)) * 2.0);
+    }
+    if (mask == 21) {
+        wipeCell(px, columns, width, ix); wipeCell(py, rows, height, iy);
+        return wipeClamp(sqrt((ix - 0.5) * (ix - 0.5) + (iy - 0.5) * (iy - 0.5)) * 1.41421354);
+    }
+    if (mask == 22) return wipeClamp((wipeClamp(r) * 3.0 + wipeTurns(dx, dy)) * 0.25);
+    if (mask == 23) {
+        float z = fx * 6.0, tri = abs(2.0 * (z - floor(z)) - 1.0);
+        return wipeClamp((fy + 0.1 * tri) / 1.1);
+    }
+    if (mask == 24) return wipeClamp((fy + 0.06 * (1.0 + wipeSin(fx * 2.0))) / 1.12);
+    if (mask == 25) return wipeClamp((1.0 - wipeClamp(abs(dx) / hw) + 0.05 * (1.0 + wipeSin(fy * 3.0))) / 1.1);
+    if (mask == 26) return wipeClamp(wipeClamp(r) * (0.7 + 0.3 * wipeSin(wipeTurns(dx, dy) * 8.0 + 0.25)));
+    if (mask == 27) {
+        float n = 0.0, total = 0.0, amp = 1.0;
+        for (int o = 0; o < 4; ++o, amp *= 0.5) { n += amp * wipeNoise(px, py, shorter, 3 << o, uint(o + 1)); total += amp; }
+        return wipeClamp((n / total - 0.2) / 0.6);
+    }
+    if (mask == 28) {
+        float n = 0.0, total = 0.0, amp = 1.0;
+        for (int o = 0; o < 6; ++o, amp *= 0.55) {
+            float v = wipeNoise(px, py, shorter, 4 << o, uint(o + 11));
+            n += amp * (1.0 - abs(2.0 * v - 1.0)); total += amp;
+        }
+        return wipeClamp((n / total - 0.3) / 0.5);
+    }
+    return fx;
+}
+float wipeCoverage(float maskValue, float progress, float softness, bool invert) {
+    float m = invert ? 1.0 - maskValue : maskValue;
+    float s = softness < 0.004 ? 0.004 : softness > 1.0 ? 1.0 : softness;
+    return wipeClamp((progress * (1.0 + s) - m) / s);
+}
+float sideDistance(int side, ivec2 p) {
+    if (side == 1) return float(pc.size.x) - (float(p.x) + 0.5);
+    if (side == 2) return float(p.y) + 0.5;
+    if (side == 3) return float(pc.size.y) - (float(p.y) + 0.5);
+    return float(p.x) + 0.5;
+}
+vec2 sidePoint(int side, float along, ivec2 p) {
+    vec2 size = vec2(pc.size);
+    if (side == 1) return vec2(1.0 - along / size.x, (float(p.y) + 0.5) / size.y);
+    if (side == 2) return vec2((float(p.x) + 0.5) / size.x, along / size.y);
+    if (side == 3) return vec2((float(p.x) + 0.5) / size.x, 1.0 - along / size.y);
+    return vec2(along / size.x, (float(p.y) + 0.5) / size.y);
+}
+
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    if (any(greaterThanEqual(p, pc.size))) return;
+    vec2 uv = (vec2(p) + 0.5) / vec2(pc.size);
+    float t = pc.progress, cp = clamp(pc.colourPoint, 0.0, 1.0);
+    vec4 colour = vec4(pc.colour.rgb * pc.colour.a, pc.colour.a);
+    bool across = pc.side == 0 || pc.side == 1;
+    float len = across ? float(pc.size.x) : float(pc.size.y), edge = t * len;
+    vec4 c;
+    if (pc.type == 1) {
+        vec4 a = alphaBilinear(oldPicture, uv), b = alphaBilinear(nextPicture, uv);
+        c = a + (b - a) * t;
+    } else if (pc.type == 4) {
+        c = t < cp ? alphaBilinear(oldPicture, uv) + (colour - alphaBilinear(oldPicture, uv)) * (t / cp)
+                   : colour + (alphaBilinear(nextPicture, uv) - colour) * (cp >= 1.0 ? 1.0 : (t - cp) / (1.0 - cp));
+    } else if (pc.type == 2) {
+        // Compare in pixel space: reciprocal approximations may put an exact
+        // boundary texel on opposite sides on different GPU drivers.
+        c = sideDistance(pc.side, p) < edge ? alphaBilinear(nextPicture, uv) : alphaBilinear(oldPicture, uv);
+    } else if (pc.type == 3 || pc.type == 5 || pc.type == 6) {
+        float along = sideDistance(pc.side, p);
+        if (along < edge) c = alphaBilinear(nextPicture, pc.type != 6 ? sidePoint(pc.side, along + (len - edge), p) : uv);
+        else c = alphaBilinear(oldPicture, pc.type != 5 ? sidePoint(pc.side, along - edge, p) : uv);
+    } else if (pc.type == 7) {
+        vec4 a = alphaBilinear(oldPicture, uv), b = alphaBilinear(nextPicture, uv);
+        c = a + (b - a) * wipeCoverage(wipeMaskValue(pc.mask, p.x, p.y, pc.size.x, pc.size.y), t, pc.softness, pc.invert != 0);
+    } else if (pc.type == 8) {
+        // Word for word as matteCoverage in frame.h.
+        vec4 m = alphaBilinear(nextPicture, pc.matte.xy + (pc.matte.zw - pc.matte.xy) * uv);
+        float l = rec709Encode(0.2126 * m.r + 0.7152 * m.g + 0.0722 * m.b);
+        float k = pc.invert != 0 ? 1.0 - l : l;
+        c = alphaBilinear(oldPicture, uv) * k;
+    } else c = t > 0.0 ? alphaBilinear(nextPicture, uv) : alphaBilinear(oldPicture, uv);
+    imageStore(dst, p, straightSample(c));
+}

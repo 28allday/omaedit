@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/colour">
+    <file alias="oma-video-v1.ocio">oma-video-v1/config.ocio</file>
+    <file alias="oma-video-v2.ocio">oma-video-v2/config.ocio</file>
+  </qresource>
+</RCC>
