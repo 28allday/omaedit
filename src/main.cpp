@@ -108,6 +108,8 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
     engine.rootContext()->setContextProperty(QStringLiteral("theme"), &theme);
 
+    // Every window opens on the Media page, where a session starts with its footage.
+    engine.setInitialProperties({{QStringLiteral("workspace"), QStringLiteral("Media")}});
     engine.load(QUrl(QStringLiteral("qrc:/Main.qml")));
     if (engine.rootObjects().isEmpty()) {
         qCritical() << "Could not load the omaedit interface.";

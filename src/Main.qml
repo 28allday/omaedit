@@ -33,7 +33,8 @@ ApplicationWindow {
     flags: Qt.Window | Qt.FramelessWindowHint
     title: qsTr("OmaEdit — %1%2").arg(backend.projectName).arg(backend.dirty ? " •" : "")
 
-    // The active workspace. Remembered across launches with the window size.
+    // The active workspace. The application opens on Media (main.cpp sets it
+    // before the window is made); a window loaded bare, as the tests do, starts on Edit.
     readonly property var activeLayout: workspace === "Edit" ? classicLayout.layoutController
         : workspace === "Media" ? (mediaLoader.item ? mediaLoader.item.layoutController : null)
         : workspace === "Color" ? (colorLoader.item ? colorLoader.item.layoutController : null)
@@ -1155,6 +1156,8 @@ ApplicationWindow {
             visible: win.workspace === "Media"
             active: false
             onVisibleChanged: if (visible) active = true
+            // Opened straight onto Media: the page is visible from the start.
+            Component.onCompleted: if (win.workspace === "Media") active = true
             sourceComponent: Media.MediaPage {
                 objectName: "workspace:Media"
                 layoutStore: backend.workspaceLayouts

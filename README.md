@@ -20,7 +20,7 @@ press Enter and give your password. It downloads the package and installs it in
 one go:
 
 ```sh
-cd /tmp && curl -LO https://github.com/28allday/omaedit/releases/download/v0.2.0/omaedit-0.2.0-1-x86_64.pkg.tar.zst && sudo pacman -U omaedit-0.2.0-1-x86_64.pkg.tar.zst
+cd /tmp && curl -LO https://github.com/28allday/omaedit/releases/download/v0.2.1/omaedit-0.2.1-1-x86_64.pkg.tar.zst && sudo pacman -U omaedit-0.2.1-1-x86_64.pkg.tar.zst
 ```
 
 **Or by hand:**
@@ -46,12 +46,13 @@ not been updated for a while, run `sudo pacman -Syu` first.
 ## Getting started
 
 The window has five pages, named along the top: **Media**, **Edit**, **Colour**,
-**Audio** and **Export**. It opens on Edit, with the library on the left, the
-viewer above and the timeline below.
+**Audio** and **Export**. It opens on Media, where footage comes in. The Edit
+page has the library on the left, the viewer above and the timeline below.
 
 To make your first cut:
 
-1. Press **Ctrl+I** and choose some footage. It appears in the library.
+1. Press **Ctrl+I** and choose some footage. It appears in the library. Then
+   click **Edit** along the top.
 2. Click a clip to see it in the viewer. Play with **Space**, or shuttle with
    **J**, **K** and **L**. Mark the part you want with **I** and **O**.
 3. Press **E** to add it to the end of the timeline. The first time, OmaEdit asks

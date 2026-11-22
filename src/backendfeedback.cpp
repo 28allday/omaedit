@@ -297,10 +297,14 @@ void Backend::refreshMediaHealth() {
       ++offline;
     if (!entry.value("proxyPath").toString().isEmpty() && !proxy)
       ++missingAttached;
+    // "Proxy preferred" asks for a proxy only where one is attached: a clip
+    // with none plays its original as meant, so it is not counted as a
+    // proxy wanted and missing. Forced "Proxy" playback counts every clip.
+    const bool attached = !entry.value("proxyPath").toString().isEmpty();
     const bool use =
         !m_linearPlayback &&
         (m_mediaPlayback == "proxy" ||
-         (m_mediaPlayback == "preferred" &&
+         (m_mediaPlayback == "preferred" && attached &&
           (entry.value("preferProxy", true).toBool() || !available)));
     if (use) {
       ++wanted;
