@@ -12,6 +12,20 @@ void PlayerWorker::setCaptionSettings(const QVariantMap &settings, const QString
     announceTimeline();
 }
 
+void PlayerWorker::editTranscript(const QVariantMap &edit, const QString &label) {
+    if (staleEdit() || exportActive() || edit.isEmpty())
+        return;
+    // Nothing on the timeline changes: the step carries the line's words
+    // before and after, and restoreHistory hands them back.
+    QVariantList before = snapshotNow();
+    QVariantMap sentinel = before.last().toMap();
+    sentinel.insert(QStringLiteral("omavid:transcript"), edit);
+    before.last() = sentinel;
+    recordEdit(before, false, label);
+    emit transcriptEditReplayed(edit, true);
+    announceTimeline();
+}
+
 void PlayerWorker::setCaptionTexts(const QVariantList &changes, const QString &label) {
     if (staleEdit() || exportActive() || changes.isEmpty())
         return;
@@ -27,7 +41,10 @@ void PlayerWorker::setCaptionTexts(const QVariantList &changes, const QString &l
         const QVariantMap e = m_timeline.entryMapOn(track, clip);
         if (!e.value(ClipKey::caption).toBool() || e.value(ClipKey::title).toString() == text)
             continue;
-        if (m_timeline.updateTitleAt(index, text, Timeline::titleStyleOf(e)))
+        // Words typed by hand: Update Captions asks before it replaces them.
+        QVariantMap style = Timeline::titleStyleOf(e);
+        style.insert(QStringLiteral("typed"), true);
+        if (m_timeline.updateTitleAt(index, text, style))
             ++changed;
     }
     emit captionTextsChanged(changed);

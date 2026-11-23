@@ -26,6 +26,7 @@
 #include "applicationtranslations.h"
 #include "storagepreferences.h"
 #include "theme.h"
+#include "omaedit_version.h"
 #include "thumbnailprovider.h"
 #include "videoview.h"
 

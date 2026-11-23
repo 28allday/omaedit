@@ -478,6 +478,17 @@ void PlayerWorker::closeSequence(int index) {
 void PlayerWorker::setSequences(const QVariantList &sequences, int active) {
     if (sequences.isEmpty())
         return;
+    adoptSequences(sequences, active);
+    // The stored sequence IDs go out with the entries, before a new edit
+    // target can be captured.
+    announceTimeline(false);
+    m_position=m_sequences[m_activeSequence].position;
+    restoreAudioPosition(m_sequences[m_activeSequence].audioPosition);
+    refreshFrame();
+    announceSequences();
+}
+
+void PlayerWorker::adoptSequences(const QVariantList &sequences, int active) {
     // A list saved without ids names its timelines here. The active one is
     // the timeline already loaded and shown: it keeps the id it has.
     const QString shownId = m_sequences.value(m_activeSequence).id;
@@ -522,17 +533,16 @@ void PlayerWorker::setSequences(const QVariantList &sequences, int active) {
     const auto savedSequences = m_sequences;
     for (Sequence &seq : m_sequences)
         seq.snapshot = MediaRefs::rewrite(seq.snapshot, paths).toList();
-    if (!refreshNests() || (!paths.isEmpty() && !restoreSnapshot(m_sequences.at(m_activeSequence).snapshot, false))) {
+    bool refreshed = refreshNests();
+    if (refreshed && !paths.isEmpty()) {
+        // Which timeline it is goes out before its clips (see loadProject).
+        announceSequences();
+        refreshed = restoreSnapshot(m_sequences.at(m_activeSequence).snapshot, false);
+    }
+    if (!refreshed) {
         m_sequences = savedSequences;
         emit editRefused(tr("Could not refresh the nested sequences. Check their media and cache storage."));
     }
-    // The saved sequence IDs replace the temporary load ID. Publish those IDs
-    // atomically with the entries before accepting a new captured edit target.
-    announceTimeline(false);
-    m_position=m_sequences[m_activeSequence].position;
-    restoreAudioPosition(m_sequences[m_activeSequence].audioPosition);
-    refreshFrame();
-    announceSequences();
 }
 
 // The nested file for a sequence, refreshed and checked for cycles, ready to

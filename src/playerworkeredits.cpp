@@ -500,7 +500,16 @@ void PlayerWorker::updateTitle(int index, const QString &text,
     if (exportActive())
         return;
     const QVariantList before = m_timeline.entries();
-    if (!m_timeline.updateTitleAt(index, text, style))
+    // A caption's words changed by hand are marked so (Update Captions asks
+    // before it replaces them).
+    QVariantMap drawn = style;
+    int track = -1, clip = -1;
+    if (m_timeline.connectedAddress(index, &track, &clip)) {
+        const QVariantMap e = m_timeline.entryMapOn(track, clip);
+        if (e.value(ClipKey::caption).toBool() && e.value(ClipKey::title).toString() != text)
+            drawn.insert(QStringLiteral("typed"), true);
+    }
+    if (!m_timeline.updateTitleAt(index, text, drawn))
         return;
     recordEdit(before, true, tr("Update title"));
     setSpeed(0.0);

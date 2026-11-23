@@ -91,6 +91,48 @@ void Backend::clearTranscript(int libraryIndex) {
     setStatus(tr("Transcript removed"));
 }
 
+bool Backend::setTranscriptLine(int libraryIndex, int line, const QString &text) {
+    if (m_exporting) return false;
+    const QVariantMap entry = libraryIndex >= 0 && libraryIndex < m_library.size() ? m_library.at(libraryIndex).toMap() : QVariantMap();
+    const QVariantList transcript = entry.value(QStringLiteral("transcript")).toList();
+    if (line < 0 || line >= transcript.size()) {
+        setStatus(tr("That clip has no such transcript line"));
+        return false;
+    }
+    const QString words = text.simplified();
+    if (words.isEmpty()) {
+        setStatus(tr("A transcript line needs words"));
+        return false;
+    }
+    const QVariantMap before = transcript.at(line).toMap();
+    if (words == before.value(QStringLiteral("text")).toString().simplified()) return true;
+    // Its word timings belong to the words heard; typed ones share its time.
+    QVariantMap after = before;
+    after.insert(QStringLiteral("text"), words);
+    after.remove(QStringLiteral("words"));
+    emit transcriptEditRequested({{"libraryId", entry.value(QStringLiteral("libraryId"))}, {"file", entry.value(QStringLiteral("path"))},
+                                  {"line", line}, {"before", before}, {"after", after}},
+                                 tr("Transcript words"));
+    return true;
+}
+
+// A transcript line's words, as typed (after) or as they were (before), on
+// the library clip the edit was made on.
+void Backend::applyTranscriptEdit(const QVariantMap &edit, bool after) {
+    const QString id = edit.value(QStringLiteral("libraryId")).toString(), file = edit.value(QStringLiteral("file")).toString();
+    const int line = edit.value(QStringLiteral("line")).toInt();
+    for (int i = 0; i < m_library.size(); ++i) {
+        const QVariantMap entry = m_library.at(i).toMap();
+        if (entry.value(QStringLiteral("path")).toString() != file || entry.value(QStringLiteral("libraryId")).toString() != id)
+            continue;
+        QVariantList transcript = entry.value(QStringLiteral("transcript")).toList();
+        if (line < 0 || line >= transcript.size()) return;
+        transcript[line] = edit.value(after ? QStringLiteral("after") : QStringLiteral("before"));
+        setLibraryField(i, QStringLiteral("transcript"), transcript);
+        return;
+    }
+}
+
 void Backend::importCaptionsDialog() {
     if (!hasVideo())
         return;
@@ -769,7 +811,7 @@ bool Backend::generateCaptionsNow(bool afterTranscribing) {
     }
     if (!missing.isEmpty()) {
         if (!m_transcriber->available()) {
-            setStatus(tr("Generate Captions cannot transcribe the clips: %1").arg(m_transcriber->status()));
+            setStatus(tr("Make Captions cannot transcribe the clips: %1").arg(m_transcriber->status()));
             return false;
         }
         if (m_transcriber->active()) {

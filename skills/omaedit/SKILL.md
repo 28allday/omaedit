@@ -134,7 +134,9 @@ Read every caption with its times, speaker and problems from
 `editor.snapCaptionsToCuts`, `editor.extendCaptionsToNext`,
 `editor.closeCaptionGaps` or `editor.shiftCaptions` (`[]` = every caption);
 set the checks' limits with `editor.setCaptionRules` and speakers' colours
-with `editor.setCaptionSpeakerColour`.
+with `editor.setCaptionSpeakerColour`. Correct a clip's transcript before
+making captions with `editor.setTranscriptLine` (library index, line, words);
+captions made from it then use those words.
 Write caption files with `editor.exportCaptionFiles` (`srt`, `vtt`, `itt` or
 `scc`; `track: -1` gives a file per caption track named by its language); in
 a render spec, `subtitles: "embed"` puts each caption track in as its own

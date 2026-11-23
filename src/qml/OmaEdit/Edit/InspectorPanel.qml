@@ -178,8 +178,8 @@ Rectangle {
 
     // ── Transcript tab ───────────────────────────────────────────────────
     // The clip whose words are shown: {name, libraryIndex, transcript:
-    // [{start, end, text}] (ms), language, hasAudio}, or null. Works for a
-    // library-only selection too, so the tab lives outside the
+    // [{start, end, text}] (ms), language, languageName, hasAudio}, or null.
+    // Works for a library-only selection too, so the tab lives outside the
     // "no clip selected" gate.
     property var transcriptClip: null
     property bool transcribing: false
@@ -190,12 +190,18 @@ Rectangle {
     property string transcriptStatus: ""
     // The timeline has clips to make captions from.
     property bool captionsAvailable: false
+    // The frame rate a transcript line's time is shown at.
+    property real transcriptFps: 25
     signal transcribeRequested()
     signal makeCaptionsRequested()
     signal transcribeCancelled()
     signal transcriptCleared()
     signal transcriptSegmentActivated(int startMs, int endMs)
-    readonly property bool transcriptSearchActive: transcriptSearch.active
+    // A transcript line's words, typed (the line by its place in the transcript).
+    signal transcriptLineEdited(int line, string text)
+    // The search field is being typed in (the editing keys stand down).
+    property bool transcriptSearchActive: false
+    readonly property bool transcriptShown: transcriptClip !== null || captionsMade
     readonly property var transcript: transcriptClip !== null && transcriptClip.transcript !== undefined
                                       ? transcriptClip.transcript : []
     property string transcriptQuery: ""
@@ -209,10 +215,70 @@ Rectangle {
         }
         return out
     }
+    // Once the timeline has captions the tab lists them instead: the rows of
+    // the caption track in use, [{index (flat connected), start, end
+    // (timeline frames), text, problems: [{kind, reason}]}] (as the caption
+    // list gives them), its language as shown ("" when not set), and the
+    // caption style shown on the style rows (Backend::trackCaptionStyle).
+    property bool captionsMade: false
+    property var captionRows: []
+    property string captionLanguage: ""
+    property var captionStyle: ({})
+    // A caption's words, typed; a caption's time clicked (its frame).
+    signal captionTextEdited(int connectedIndex, string text)
+    signal captionChosen(int connectedIndex, int frame)
+    // Style keys for every caption on every caption track; Update Captions.
+    signal captionStyleChosen(var style)
+    signal updateCaptionsRequested()
+    readonly property var captionLines: {
+        const needle = transcriptQuery.trim().toLowerCase()
+        return captionRows.filter(function (r) { return needle === "" || String(r.text).toLowerCase().indexOf(needle) >= 0 })
+    }
+    // The lines shown, one shape for both: {key, start, end, time, text, reasons}.
+    readonly property var shownLines: captionsMade
+        ? captionLines.map(function (r) {
+              return { key: r.index, start: r.start, end: r.end, text: String(r.text),
+                       time: typeof timelineTimecode === "function" ? timelineTimecode(r.start) : String(r.start),
+                       reasons: (r.problems || []).map(function (p) { return p.reason }).join("\n") }
+          })
+        : transcriptRows.map(function (r) {
+              return { key: r.index, start: r.start, end: r.end, text: r.text, time: msTimecode(r.start), reasons: "" }
+          })
+    // The header: whose words (shortened first when room runs out), then
+    // their language and how many.
+    readonly property string transcriptSummary: [transcriptSummaryName, transcriptSummaryCount].filter(function (p) { return p !== "" }).join(" · ")
+    readonly property string transcriptSummaryName: transcriptClip !== null ? transcriptClip.name : captionsMade ? qsTr("Captions") : ""
+    readonly property string transcriptSummaryCount: {
+        const parts = []
+        const language = captionsMade ? captionLanguage
+                         : transcriptClip !== null && transcriptClip.languageName ? transcriptClip.languageName : ""
+        if (language !== "") parts.push(language)
+        if (captionsMade) parts.push(qsTr("%n caption(s)", "", captionRows.length))
+        else if (transcript.length > 0) parts.push(qsTr("%n line(s)", "", transcript.length))
+        return parts.join(" · ")
+    }
+    // The style rows' choices, read from the style shown.
+    readonly property var captionSizes: ["small", "medium", "large"]
+    readonly property var captionPlaces: ["top", "bottom"]
+    readonly property var captionLooks: [
+        { outline: false, bg: "", shadow: false },
+        { outline: true, bg: "", shadow: false },
+        { outline: false, bg: "#99000000", shadow: false },
+        { outline: false, bg: "", shadow: true, shadowColor: "#000000", shadowOffset: 3, shadowSoftness: 6 }]
+    readonly property var captionColours: [{ colour: "#ffffff", name: qsTr("White") }, { colour: "#ffff00", name: qsTr("Yellow") }]
+    readonly property int captionSizeShown: captionStyle.pixelSize > 0 ? -1 : captionSizes.indexOf(captionStyle.size)
+    readonly property int captionPlaceShown: captionPlaces.indexOf(captionStyle.place)
+    // A box shows as Box, then a shadow as Shadow, an outline as Outline.
+    readonly property int captionLookShown: captionStyle.bg && captionStyle.bg !== "" && captionStyle.boxOpacity > 0 ? 2
+                                            : captionStyle.shadow === true ? 3 : captionStyle.outline !== false ? 1 : 0
+    readonly property string captionColourShown: String(captionStyle.color || "#ffffff").toLowerCase()
     function msTimecode(ms) {
-        const total = Math.floor(ms / 1000)
+        const fps = transcriptFps > 0 ? transcriptFps : 25
+        const frames = Math.floor(ms / 1000 * fps + 1e-6)
+        const rate = Math.round(fps)
+        const total = Math.floor(frames / rate)
         const pad = function (n) { return n < 10 ? "0" + n : "" + n }
-        return pad(Math.floor(total / 3600)) + ":" + pad(Math.floor(total % 3600 / 60)) + ":" + pad(total % 60)
+        return pad(Math.floor(total / 3600)) + ":" + pad(Math.floor(total % 3600 / 60)) + ":" + pad(total % 60) + ":" + pad(frames % rate)
     }
     signal colorEdited(real brightness, real contrast, real saturation)
     signal titleEditRequested()
@@ -435,6 +501,29 @@ Rectangle {
     }
 
     // ── Transcript ─────────────────────────────────────────────────────────
+    // The selected clip's transcript, and once the timeline has captions,
+    // those captions: each line's words edited in place (Enter or leaving
+    // the box keeps them, one undo step), its time clicked to go there. The
+    // caption style rows set one look on every caption.
+    // A choice that shows the style as it is: a click shows the new choice
+    // at once, and the style as it then stands soon after (a refused change
+    // goes back).
+    component StyleChoice: SegmentedControl {
+        id: choice
+        property int shownIndex: -1
+        segmentPadding: Theme.s2
+        onShownIndexChanged: currentIndex = shownIndex
+        Component.onCompleted: currentIndex = shownIndex
+        onActivated: resync.restart()
+        Timer { id: resync; interval: 600; onTriggered: choice.currentIndex = choice.shownIndex }
+    }
+    component StyleLabel: Text {
+        width: 44
+        font.family: Theme.fontFamily
+        font.pixelSize: Theme.fsLabel
+        color: Theme.textMuted
+        elide: Text.ElideRight
+    }
     Item {
         id: transcriptPane
         objectName: "transcriptPane"
@@ -447,171 +536,402 @@ Rectangle {
 
         EmptyState {
             anchors.fill: parent
-            visible: root.transcriptClip === null
+            visible: root.transcriptClip === null && !root.captionsMade
             iconName: "captions"
             title: qsTr("No clip to transcribe")
             description: qsTr("Select a clip on the timeline, or in the browser.")
         }
 
-        Column {
-            id: transcriptHead
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            spacing: Theme.s2
-            visible: root.transcriptClip !== null
-
-            Row {
-                spacing: Theme.s2
-                Chip { label: "AI"; tint: ""; tip: qsTr("Marks a feature that runs a machine-learning model on this machine") }
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: root.transcriptClip !== null ? root.transcriptClip.name : ""
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fsLabel
-                    font.weight: Theme.wHeading
-                    color: Theme.textPrimary
-                    elide: Text.ElideMiddle
-                    width: transcriptHead.width - 60
-                }
+        // The lines, kept in a model of their own: an edit elsewhere changes
+        // the words in place, so the box being typed in keeps its focus.
+        ListModel { id: lineModel }
+        property bool linesAreCaptions: false
+        function syncLines() {
+            const rows = root.shownLines
+            let same = rows.length === lineModel.count && linesAreCaptions === root.captionsMade
+            linesAreCaptions = root.captionsMade
+            for (let i = 0; same && i < rows.length; ++i) same = lineModel.get(i).key === rows[i].key
+            if (!same) {
+                lineModel.clear()
+                for (let i = 0; i < rows.length; ++i) lineModel.append(rows[i])
+                return
             }
-            Text {
-                width: parent.width
-                visible: root.transcript.length === 0 && !root.transcribing
-                text: root.transcriptAvailable
-                      ? qsTr("Transcribe runs whisper.cpp on this machine over the clip's audio. It only writes words and times onto the library clip — the media and the timeline are never changed.")
-                      : root.transcriptStatus
-                wrapMode: Text.WordWrap
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fsLabel
-                color: root.transcriptAvailable ? Theme.textMuted : Theme.warning
-            }
-            // (Wraps on a narrow panel.)
-            Flow {
-                width: parent.width
-                spacing: Theme.s2
-                ToolButton {
-                    objectName: "transcribeButton"
-                    iconName: "sparkles"
-                    text: root.transcribing ? (root.transcribeStage === "audio" ? qsTr("Extracting audio…")
-                                                                                 : qsTr("Transcribing… %1%").arg(root.transcribePercent))
-                        : root.transcript.length > 0 ? qsTr("Re-transcribe (AI)") : qsTr("Transcribe with Whisper (AI)")
-                    showLabel: true
-                    enabled: !root.transcribing && root.transcriptAvailable && root.transcriptClip !== null
-                             && root.transcriptClip.hasAudio !== false
-                    onClicked: root.transcribeRequested()
-                }
-                ToolButton {
-                    visible: root.transcribing
-                    iconName: "x"
-                    text: qsTr("Cancel")
-                    showLabel: true
-                    onClicked: root.transcribeCancelled()
-                }
-                ToolButton {
-                    visible: root.transcript.length > 0 && !root.transcribing
-                    iconName: "trash-2"
-                    text: qsTr("Clear")
-                    showLabel: true
-                    onClicked: root.transcriptCleared()
-                }
-                ToolButton {
-                    objectName: "makeCaptionsButton"
-                    iconName: "captions"
-                    text: qsTr("Make Captions")
-                    tip: qsTr("Turn the transcripts of the timeline's clips into a caption layer, transcribing first any clip that has none")
-                    showLabel: true
-                    enabled: !root.transcribing && root.captionsAvailable
-                    onClicked: root.makeCaptionsRequested()
-                }
-            }
-            Text {
-                width: parent.width
-                visible: root.transcriptClip !== null && root.transcriptClip.hasAudio === false
-                text: qsTr("This clip has no audio.")
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fsLabel
-                color: Theme.textMuted
-            }
-            Text {
-                width: parent.width
-                visible: root.transcriptError !== ""
-                text: root.transcriptError
-                wrapMode: Text.WordWrap
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fsLabel
-                color: Theme.warning
-            }
-            SearchField {
-                id: transcriptSearch
-                objectName: "transcriptSearch"
-                tip: qsTr("Jump to the transcript lines containing this text")
-                width: parent.width
-                visible: root.transcript.length > 0
-                placeholder: qsTr("Search the transcript…")
-                onTextChanged: root.transcriptQuery = text
-            }
-            Text {
-                visible: root.transcript.length > 0
-                text: root.transcriptQuery.trim() !== ""
-                      ? qsTr("%1 of %2 lines match — click one to range it").arg(root.transcriptRows.length).arg(root.transcript.length)
-                      : qsTr("%1 lines%2 — click one to range it on the timeline")
-                            .arg(root.transcript.length)
-                            .arg(root.transcriptClip !== null && root.transcriptClip.language !== undefined && root.transcriptClip.language !== ""
-                                 ? " · " + root.transcriptClip.language : "")
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fsLabel
-                color: Theme.textMuted
+            for (let i = 0; i < rows.length; ++i) {
+                const was = lineModel.get(i), now = rows[i]
+                for (const role of ["start", "end", "time", "text", "reasons"])
+                    if (was[role] !== now[role]) lineModel.setProperty(i, role, now[role])
             }
         }
+        Connections { target: root; function onShownLinesChanged() { transcriptPane.syncLines() } }
+        Component.onCompleted: syncLines()
 
         ListView {
             id: transcriptList
             objectName: "transcriptList"
-            anchors.top: transcriptHead.bottom
-            anchors.topMargin: Theme.s2
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
+            anchors.fill: parent
             clip: true
-            visible: root.transcriptClip !== null && root.transcript.length > 0
-            model: root.transcriptRows
-            spacing: 1
+            visible: root.transcriptShown
+            model: lineModel
+            // The header grows as its parts load or show: kept in view from
+            // its top unless the list has been scrolled.
+            property bool atTop: true
+            onMovementEnded: atTop = contentY <= originY + 1
+            onOriginYChanged: if (atTop) positionViewAtBeginning()
+            // The clip, its transcript buttons, the caption style and the
+            // search scroll with the lines: a short panel still reaches all.
+            header: Component {
+                Column {
+                    id: transcriptHead
+                    width: transcriptList.width - 8
+                    spacing: Theme.s2
+                    bottomPadding: Theme.s3
+
+                    // Whose words, their language, how many.
+                    Row {
+                        width: parent.width
+                        spacing: Theme.s2
+                        Chip { id: aiChip; label: "AI"; tint: ""; tip: qsTr("Marks a feature that runs a machine-learning model on this machine") }
+                        Text {
+                            objectName: "transcriptSummary"
+                            readonly property string fullText: root.transcriptSummary
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Math.min(implicitWidth, parent.width - aiChip.width - summaryCount.implicitWidth - parent.spacing)
+                            text: root.transcriptSummaryName
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fsLabel
+                            font.weight: Theme.wHeading
+                            color: Theme.textPrimary
+                            elide: Text.ElideMiddle
+                        }
+                        Text {
+                            id: summaryCount
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: root.transcriptSummaryCount !== ""
+                            text: "· " + root.transcriptSummaryCount
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fsLabel
+                            color: Theme.textSecondary
+                        }
+                    }
+                    Text {
+                        width: parent.width
+                        visible: root.transcriptClip !== null && root.transcript.length === 0 && !root.transcribing && !root.captionsMade
+                        text: root.transcriptAvailable
+                              ? qsTr("Transcribe runs whisper.cpp on this machine over the clip's audio. It only writes words and times onto the library clip — the media and the timeline are never changed.")
+                              : root.transcriptStatus
+                        wrapMode: Text.WordWrap
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fsLabel
+                        color: root.transcriptAvailable ? Theme.textMuted : Theme.warning
+                    }
+                    // (Wraps on a narrow panel.)
+                    Flow {
+                        width: parent.width
+                        spacing: Theme.s2
+                        visible: root.transcriptClip !== null
+                        ToolButton {
+                            objectName: "transcribeButton"
+                            iconName: "sparkles"
+                            text: root.transcribing ? (root.transcribeStage === "audio" ? qsTr("Extracting audio…")
+                                                                                         : qsTr("Transcribing… %1%").arg(root.transcribePercent))
+                                : root.transcript.length > 0 ? qsTr("Re-transcribe") : qsTr("Transcribe")
+                            tip: root.transcript.length > 0 ? qsTr("Transcribe the clip's speech again with whisper.cpp on this machine, in place of its words now")
+                                                            : qsTr("Write the clip's speech as words with whisper.cpp on this machine")
+                            showLabel: true
+                            enabled: !root.transcribing && root.transcriptAvailable && root.transcriptClip !== null
+                                     && root.transcriptClip.hasAudio !== false
+                            onClicked: root.transcribeRequested()
+                        }
+                        ToolButton {
+                            visible: root.transcribing
+                            iconName: "x"
+                            text: qsTr("Cancel")
+                            tip: qsTr("Stop transcribing; the clip keeps the words it had")
+                            showLabel: true
+                            onClicked: root.transcribeCancelled()
+                        }
+                        ToolButton {
+                            visible: root.transcript.length > 0 && !root.transcribing
+                            iconName: "trash-2"
+                            text: qsTr("Clear")
+                            tip: qsTr("Remove the clip's transcript; captions already made stay")
+                            showLabel: true
+                            onClicked: root.transcriptCleared()
+                        }
+                    }
+                    Text {
+                        width: parent.width
+                        visible: root.transcriptClip !== null && root.transcriptClip.hasAudio === false
+                        text: qsTr("This clip has no audio.")
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fsLabel
+                        color: Theme.textMuted
+                    }
+                    Text {
+                        width: parent.width
+                        visible: root.transcriptError !== ""
+                        text: root.transcriptError
+                        wrapMode: Text.WordWrap
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fsLabel
+                        color: Theme.warning
+                    }
+
+                    // ── Captions: make them, then one look for all of them ──
+                    Rectangle { width: parent.width; height: Theme.hairline; color: Theme.border }
+                    Item {
+                        width: parent.width
+                        height: makeCaptionsButton.implicitHeight
+                        Text {
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("Captions")
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fsLabel
+                            font.weight: Theme.wHeading
+                            font.capitalization: Font.AllUppercase
+                            font.letterSpacing: 0.6
+                            color: Theme.textSecondary
+                        }
+                        ToolButton {
+                            id: makeCaptionsButton
+                            objectName: "makeCaptionsButton"
+                            anchors.right: parent.right
+                            iconName: "captions"
+                            text: root.captionsMade ? qsTr("Update Captions") : qsTr("Make Captions")
+                            tip: root.captionsMade
+                                 ? qsTr("Make the captions again from the transcripts, in place of those on the timeline; words changed in a transcript are kept")
+                                 : qsTr("Turn the transcripts of the timeline's clips into captions, transcribing first any clip that has none")
+                            showLabel: true
+                            enabled: !root.transcribing && root.captionsAvailable
+                            onClicked: root.captionsMade ? root.updateCaptionsRequested() : root.makeCaptionsRequested()
+                        }
+                    }
+                    Grid {
+                        columns: 2
+                        columnSpacing: Theme.s2
+                        rowSpacing: Theme.s2
+                        verticalItemAlignment: Grid.AlignVCenter
+
+                        StyleLabel { text: qsTr("Size") }
+                        StyleChoice {
+                            objectName: "captionSizeChoice"
+                            labels: [qsTr("S"), qsTr("M"), qsTr("L")]
+                            names: [qsTr("Small"), qsTr("Medium"), qsTr("Large")]
+                            tip: qsTr("Text size of every caption: small, medium or large. One undo step.")
+                            shownIndex: root.captionSizeShown
+                            onActivated: function (i) { if (i !== root.captionSizeShown) root.captionStyleChosen({ size: root.captionSizes[i], pixelSize: 0 }) }
+                        }
+                        StyleLabel { text: qsTr("Place") }
+                        StyleChoice {
+                            objectName: "captionPlaceChoice"
+                            labels: [qsTr("Top"), qsTr("Bottom")]
+                            tip: qsTr("Where every caption sits: at the top or the bottom of the picture. One undo step.")
+                            shownIndex: root.captionPlaceShown
+                            onActivated: function (i) { if (i !== root.captionPlaceShown) root.captionStyleChosen({ place: root.captionPlaces[i] }) }
+                        }
+                        StyleLabel { text: qsTr("Look") }
+                        StyleChoice {
+                            objectName: "captionLookChoice"
+                            labels: [qsTr("Plain"), qsTr("Outline"), qsTr("Box"), qsTr("Shadow")]
+                            segmentPadding: 6
+                            tip: qsTr("How every caption stands out: plain letters, an outline, a dark box behind, or a soft shadow. One undo step.")
+                            shownIndex: root.captionLookShown
+                            onActivated: function (i) { if (i !== root.captionLookShown) root.captionStyleChosen(root.captionLooks[i]) }
+                        }
+                        StyleLabel { text: qsTr("Colour") }
+                        Row {
+                            spacing: Theme.s1
+                            Repeater {
+                                model: root.captionColours
+                                delegate: ToolButton {
+                                    id: swatch
+                                    required property var modelData
+                                    objectName: "captionColour:" + modelData.colour
+                                    text: modelData.name
+                                    showLabel: false
+                                    implicitWidth: Theme.szIconHit
+                                    checked: root.captionColourShown === modelData.colour
+                                    tip: qsTr("%1 letters on every caption. One undo step.").arg(modelData.name)
+                                    onClicked: if (!checked) root.captionStyleChosen({ color: modelData.colour })
+                                    contentItem: Item {
+                                        implicitWidth: 16
+                                        implicitHeight: 16
+                                        Rectangle {
+                                            anchors.centerIn: parent
+                                            width: 14
+                                            height: 14
+                                            radius: 7
+                                            color: swatch.modelData.colour
+                                            border.width: swatch.checked ? 2 : Theme.hairline
+                                            border.color: swatch.checked ? Theme.accent : Theme.borderStrong
+                                        }
+                                    }
+                                }
+                            }
+                            LineEdit {
+                                id: captionColourField
+                                objectName: "captionColourField"
+                                width: 76
+                                implicitHeight: Theme.hControl
+                                padding: Theme.s1
+                                font.family: Theme.monoFamily
+                                font.pixelSize: Theme.fsLabel
+                                hint: "#rrggbb"
+                                tip: qsTr("Any colour for every caption's letters, as #rrggbb; Enter sets it. One undo step.")
+                                validator: RegularExpressionValidator { regularExpression: /#[0-9A-Fa-f]{6}/ }
+                                text: root.captionColourShown
+                                onEditingFinished: if (acceptableInput && text.toLowerCase() !== root.captionColourShown)
+                                                       root.captionStyleChosen({ color: text.toLowerCase() })
+                            }
+                        }
+                    }
+                    Rectangle { width: parent.width; height: Theme.hairline; color: Theme.border }
+
+                    SearchField {
+                        id: transcriptSearch
+                        objectName: "transcriptSearch"
+                        tip: root.captionsMade ? qsTr("Show only the captions with these words") : qsTr("Show only the transcript lines with these words")
+                        width: parent.width
+                        visible: root.transcript.length > 0 || root.captionsMade
+                        placeholder: qsTr("Search…")
+                        onTextChanged: root.transcriptQuery = text
+                    onActiveChanged: root.transcriptSearchActive = active
+                    Component.onDestruction: root.transcriptSearchActive = false
+                    }
+                }
+            }
+            spacing: 2
             boundsBehavior: Flickable.StopAtBounds
             C.ScrollBar.vertical: ScrollBar {}
             delegate: Rectangle {
                 id: line
-                required property var modelData
-                objectName: "transcriptLine:" + modelData.index
-                width: transcriptList.width
-                height: lineText.implicitHeight + Theme.s2 * 2
+                required property int index
+                required property int key
+                required property int start
+                required property int end
+                required property string time
+                required property string text
+                required property string reasons
+                readonly property bool caption: root.captionsMade
+                objectName: (caption ? "captionLine:" : "transcriptLine:") + key
+                width: transcriptList.width - 8
+                height: Math.max(lineTime.height, lineWords.implicitHeight) + Theme.s1 * 2
                 radius: Theme.rControl
-                color: lineHover.hovered ? Theme.hovered(Theme.panelRaised) : Theme.panelRaised
-                Text {
+                color: lineWords.activeFocus ? Theme.controlBg
+                       : lineHover.hovered ? Theme.hovered(Theme.panelBg) : "transparent"
+                HoverHandler { id: lineHover }
+
+                ToolButton {
                     id: lineTime
+                    objectName: (line.caption ? "captionTime:" : "transcriptTime:") + line.key
                     anchors.left: parent.left
                     anchors.top: parent.top
-                    anchors.margins: Theme.s2
-                    text: root.msTimecode(line.modelData.start)
-                    font.family: Theme.monoFamily
-                    font.pixelSize: Theme.fsLabel
-                    color: Theme.accent
+                    anchors.topMargin: Theme.s1
+                    text: line.time
+                    showLabel: false
+                    tip: line.caption ? qsTr("Go to this caption and select it")
+                                      : qsTr("Mark this line's words as the range on the timeline")
+                    implicitWidth: timeText.implicitWidth + Theme.s1 * 2
+                    // As tall as the words' first line, beside it.
+                    implicitHeight: timeText.implicitHeight + 6
+                    contentItem: Text {
+                        id: timeText
+                        text: line.time
+                        font.family: Theme.monoFamily
+                        font.pixelSize: Theme.fsLabel
+                        color: Theme.accent
+                        verticalAlignment: Text.AlignVCenter
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                    onClicked: line.caption ? root.captionChosen(line.key, line.start)
+                                            : root.transcriptSegmentActivated(line.start, line.end)
                 }
-                Text {
-                    id: lineText
+                C.TextArea {
+                    id: lineWords
+                    objectName: (line.caption ? "captionWords:" : "transcriptWords:") + line.key
                     anchors.left: lineTime.right
-                    anchors.right: parent.right
+                    anchors.leftMargin: Theme.s1
+                    anchors.right: problemMark.visible ? problemMark.left : parent.right
                     anchors.top: parent.top
-                    anchors.margins: Theme.s2
-                    text: line.modelData.text
-                    wrapMode: Text.WordWrap
+                    anchors.topMargin: Theme.s1
+                    text: line.text
+                    wrapMode: TextEdit.Wrap
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fsLabel
                     color: Theme.textPrimary
+                    selectionColor: Theme.accent
+                    selectedTextColor: Theme.accentText
+                    selectByMouse: true
+                    hoverEnabled: true
+                    padding: 3
+                    leftPadding: 4
+                    rightPadding: 4
+                    topInset: 0
+                    bottomInset: 0
+                    leftInset: 0
+                    rightInset: 0
+                    background: Rectangle {
+                        radius: Theme.rControl
+                        color: "transparent"
+                        border.width: lineWords.activeFocus || lineWords.hovered ? Theme.hairline : 0
+                        border.color: lineWords.activeFocus ? Theme.accent : Theme.border
+                    }
+                    Accessible.name: line.caption ? qsTr("Caption words") : qsTr("Transcript words")
+                    // The words last sent, so Enter and the focus leaving
+                    // after it make one edit, not two.
+                    property string sent: ""
+                    function keep() {
+                        const words = line.caption ? text.trim() : text.replace(/\s+/g, " ").trim()
+                        if (words === "" || words === line.text || words === sent) return
+                        sent = words
+                        if (line.caption) root.captionTextEdited(line.key, words)
+                        else root.transcriptLineEdited(line.key, words)
+                    }
+                    // Enter keeps the words; Shift+Enter starts a caption's
+                    // second line; Esc puts them back as they were.
+                    function enter(event) {
+                        if (line.caption && (event.modifiers & Qt.ShiftModifier)) { event.accepted = false; return }
+                        keep()
+                        lineWords.focus = false
+                    }
+                    Keys.onReturnPressed: function (event) { enter(event) }
+                    Keys.onEnterPressed: function (event) { enter(event) }
+                    Keys.onEscapePressed: { text = line.text; lineWords.focus = false }
+                    onActiveFocusChanged: if (!activeFocus) keep()
+                    Tooltip {
+                        text: line.caption ? qsTr("This caption's words: Enter keeps them (one undo step), Shift+Enter starts a new line")
+                                           : qsTr("This line's words: Enter keeps them (one undo step); Make Captions uses them")
+                        visible: lineWords.hovered && !lineWords.activeFocus
+                    }
                 }
-                HoverHandler { id: lineHover }
-                TapHandler { onTapped: root.transcriptSegmentActivated(line.modelData.start, line.modelData.end) }
+                Text {
+                    id: problemMark
+                    objectName: "captionProblem:" + line.key
+                    visible: line.reasons !== ""
+                    anchors.right: parent.right
+                    anchors.rightMargin: Theme.s1
+                    anchors.top: parent.top
+                    anchors.topMargin: Theme.s1 + 3
+                    text: "⚠"
+                    font.pixelSize: Theme.fsLabel
+                    color: Theme.warning
+                    HoverHandler { id: markHover }
+                    Tooltip { text: line.reasons; visible: markHover.hovered }
+                    Accessible.role: Accessible.StaticText
+                    Accessible.name: line.reasons
+                }
             }
+        }
+        Text {
+            y: transcriptList.headerItem ? transcriptList.headerItem.height + Theme.s3 : 0
+            width: parent.width
+            visible: root.transcriptShown && lineModel.count === 0 && root.transcriptQuery.trim() !== ""
+            horizontalAlignment: Text.AlignHCenter
+            text: qsTr("Nothing matches")
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fsLabel
+            color: Theme.textMuted
         }
     }
 

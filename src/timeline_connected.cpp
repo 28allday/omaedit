@@ -48,6 +48,7 @@ QVariantMap Timeline::titleStyleOf(const QVariantMap &entry) {
     for (auto it = look.begin(); it != look.end(); ++it) style.insert(it.key(), it.value());
     if (entry.contains(ClipKey::speaker)) style.insert(QStringLiteral("speaker"), entry.value(ClipKey::speaker));
     if (entry.value(ClipKey::ownStyle).toBool()) style.insert(QStringLiteral("ownStyle"), true);
+    if (entry.value(ClipKey::typed).toBool()) style.insert(QStringLiteral("typed"), true);
     return style;
 }
 
@@ -167,6 +168,9 @@ bool Timeline::connectTitleAt(const QString &text, int position, int length,
         producer.set("omavid:speaker", speaker.toUtf8().constData());
     if (style.value(QStringLiteral("ownStyle")).toBool())
         producer.set("omavid:ownStyle", 1);
+    // Words typed by hand into a caption.
+    if (style.value(QStringLiteral("typed")).toBool())
+        producer.set("omavid:typed", 1);
 
     QVariantMap typography;
     if(style.contains("tracking"))typography["tracking"]=qBound(-50.,style.value("tracking").toDouble(),200.);
@@ -519,6 +523,7 @@ bool Timeline::updateTitlePlain(int index, const QString &text,
     // A caption keeps its speaker and its own-look mark unless told otherwise.
     if(!newStyle.contains("speaker")&&map.contains(ClipKey::speaker))newStyle["speaker"]=map.value(ClipKey::speaker);
     if(!newStyle.contains("ownStyle")&&map.value(ClipKey::ownStyle).toBool())newStyle["ownStyle"]=true;
+    if(!newStyle.contains("typed")&&map.value(ClipKey::typed).toBool())newStyle["typed"]=true;
     if (!connectTitleAt(text, start, frames, newStyle, laneIdx + 1))
         return false;
     const int placed = clipIndexAt(laneIdx + 1, start);

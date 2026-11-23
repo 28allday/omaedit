@@ -802,6 +802,7 @@ bool Timeline::restoreLaneEntry(const ClipEntry &e, int start, int clipIndex, bo
             for (auto it = e.titleLook->begin(); it != e.titleLook->end(); ++it) style.insert(it.key(), it.value());
         if (e.speaker) style[QStringLiteral("speaker")] = *e.speaker;
         if (e.ownStyle) style[QStringLiteral("ownStyle")] = true;
+        if (e.typed) style[QStringLiteral("typed")] = true;
         // (A title is made by its length, and a transition into it takes
         // its frames from the title's head: the entry counts them apart.)
         placed = connectTitleAt(title, start, e.frames + e.mixIn, style, laneNumber);

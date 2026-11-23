@@ -110,8 +110,9 @@ void Backend::loadProject(const QUrl &url) {
         return;
     }
     setStatus(tr("Opening %1…").arg(displayNameFor(url)));
-    // The file's own sequence list arrives with projectLoaded; until then
-    // the project is one sequence, not the previous project's tabs.
+    // The file's own sequence list comes from the worker as it opens the
+    // file; until then the project is one sequence, not the previous
+    // project's tabs.
     m_sequences = {QVariantMap{{QStringLiteral("name"), QStringLiteral("Sequence 1")},
                                {QStringLiteral("position"), 0}}};
     m_activeSequence = 0;

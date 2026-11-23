@@ -5,6 +5,7 @@
 #include "exportspec.h"
 #include "hardwareprobe.h"
 #include "markeredit.h"
+#include "omaedit_version.h"
 #include "speedrampedit.h"
 #include "playerworker.h"
 #include "projectfile.h"

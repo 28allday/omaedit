@@ -16,6 +16,8 @@ Rectangle {
     property var names: []
     // Tooltip: what this control changes, shown after the usual delay.
     property string tip: ""
+    // Room either side of a label: less where a narrow panel needs it.
+    property int segmentPadding: Theme.s3
 
     signal activated(int index)
 
@@ -44,7 +46,7 @@ Rectangle {
 
                 width: root.iconMode
                        ? Theme.szIconHit
-                       : segLabel.implicitWidth + Theme.s3 * 2
+                       : segLabel.implicitWidth + root.segmentPadding * 2
                 height: root.height - Theme.hairline * 2
 
                 readonly property bool current: index === root.currentIndex

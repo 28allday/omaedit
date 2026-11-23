@@ -69,8 +69,20 @@ AppMenu {
         commandId: "edit.paste-insert"
     }
 
+    // Captions, kept short: everyday caption work is in Inspector ▸
+    // Transcript. Split, Join, the timing tools and speakers stay in the
+    // command palette, their shortcuts, the Caption List panel and the
+    // caption track's menu.
     AppMenu {
+        objectName: "captionsMenu"
         title: qsTr("Captions")
+        KeyMenuItem {
+            text: qsTr("Make Captions")
+            commandId: "edit.caption-generate"
+            kbd: Ui.Commands.hint(commandId)
+            enabled: !registeredCommand || registeredCommand.available
+            onTriggered: Ui.Commands.trigger(commandId)
+        }
         KeyMenuItem {
             text: qsTr("Add Caption")
             commandId: "edit.caption-add"
@@ -79,68 +91,15 @@ AppMenu {
             onTriggered: Ui.Commands.trigger(commandId)
         }
         KeyMenuItem {
-            text: qsTr("Split Caption")
-            commandId: "edit.caption-split"
-            kbd: Ui.Commands.hint(commandId)
-            enabled: !registeredCommand || registeredCommand.available
-            onTriggered: Ui.Commands.trigger(commandId)
-        }
-        KeyMenuItem {
-            text: qsTr("Join Captions")
-            commandId: "edit.caption-join"
-            kbd: Ui.Commands.hint(commandId)
-            enabled: !registeredCommand || registeredCommand.available
-            onTriggered: Ui.Commands.trigger(commandId)
-        }
-        KeyMenuItem {
-            text: qsTr("Generate Captions")
-            commandId: "edit.caption-generate"
-            kbd: Ui.Commands.hint(commandId)
-            enabled: !registeredCommand || registeredCommand.available
-            onTriggered: Ui.Commands.trigger(commandId)
-        }
-        MenuSeparator {}
-        AppMenu {
-            title: qsTr("Timing")
-            KeyMenuItem {
-                text: qsTr("Snap Edges to Cuts…")
-                commandId: "edit.caption-snap"
-                kbd: Ui.Commands.hint(commandId)
-                enabled: !registeredCommand || registeredCommand.available
-                onTriggered: Ui.Commands.trigger(commandId)
-            }
-            KeyMenuItem {
-                text: qsTr("Extend to the Next Caption")
-                commandId: "edit.caption-extend"
-                kbd: Ui.Commands.hint(commandId)
-                enabled: !registeredCommand || registeredCommand.available
-                onTriggered: Ui.Commands.trigger(commandId)
-            }
-            KeyMenuItem {
-                text: qsTr("Close Small Gaps…")
-                commandId: "edit.caption-close-gaps"
-                kbd: Ui.Commands.hint(commandId)
-                enabled: !registeredCommand || registeredCommand.available
-                onTriggered: Ui.Commands.trigger(commandId)
-            }
-            KeyMenuItem {
-                text: qsTr("Shift Captions…")
-                commandId: "edit.caption-shift"
-                kbd: Ui.Commands.hint(commandId)
-                enabled: !registeredCommand || registeredCommand.available
-                onTriggered: Ui.Commands.trigger(commandId)
-            }
-        }
-        KeyMenuItem {
-            text: qsTr("Speakers…")
-            commandId: "edit.caption-speakers"
+            text: qsTr("Export Captions…")
+            commandId: "project.export-captions"
             kbd: Ui.Commands.hint(commandId)
             enabled: !registeredCommand || registeredCommand.available
             onTriggered: Ui.Commands.trigger(commandId)
         }
         MenuSeparator {}
         KeyMenuItem {
-            text: qsTr("Caption Style…")
+            text: qsTr("More Caption Settings…")
             commandId: "edit.caption-style"
             kbd: Ui.Commands.hint(commandId)
             enabled: !registeredCommand || registeredCommand.available

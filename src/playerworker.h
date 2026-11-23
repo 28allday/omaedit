@@ -307,6 +307,12 @@ public slots:
     // New words for captions, [{index, text}] by flat connected index; a
     // caption keeps its look and speaker. One undo step `label`.
     void setCaptionTexts(const QVariantList &changes, const QString &label);
+    // A transcript line's new words (Inspector ▸ Transcript): the library
+    // keeps transcripts, the history this step, so Undo and Redo reach it.
+    // `edit` {libraryId, file, line, before, after} (segments); the step's
+    // timeline is the one as it stands. transcriptEditReplayed(edit, true)
+    // once it is recorded.
+    void editTranscript(const QVariantMap &edit, const QString &label);
     // New times for captions, [{index, start, frames}], each on its own
     // track. A caption never covers or passes another: one with something
     // in its way stays where it was. One undo step `label`; captionsRetimed
@@ -345,7 +351,7 @@ public slots:
     void moveSequenceToBin(int index, const QString &binId);
     void duplicateSequence(int index);
     void closeSequence(int index);
-    void setSequences(const QVariantList &sequences, int active); // project load
+    void setSequences(const QVariantList &sequences, int active); // a stored list (loadProject adopts the file's own)
     void setBlend(int track, int index, int mode);
     void setScaling(int track, int index, const QString &scaling);
     void setLens(int track, int index, double k1, double k2, double cx, double cy);
@@ -677,6 +683,9 @@ signals:
     void adrCuesChanged(const QVariantList &cues);
     void captionSettingsChanged(const QVariantMap &settings);
     void captionTextsChanged(int changed);
+    // A transcript line's words to put in the library: edit's `after` when
+    // made or redone, its `before` when undone.
+    void transcriptEditReplayed(const QVariantMap &edit, bool after);
     void captionsRetimed(int moved, int kept);
     void stopped(); // ran off either end of the timeline
     void playbackSpeedChanged(double speed, quint64 request);
@@ -952,6 +961,9 @@ private:
     int m_activeSequence = 0;
     void announceSequences();
     void stashActiveSequence();
+    // The stored timelines put in place, the one loaded being `active`;
+    // announces nothing unless a nested timeline's path had to change.
+    void adoptSequences(const QVariantList &sequences, int active);
     QVariantMap parkedAudioPosition() const;
     void restoreAudioPosition(const QVariantMap &position, bool resetGang = true);
     QList<QVariantList> m_undoStack;

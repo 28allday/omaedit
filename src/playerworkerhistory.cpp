@@ -341,7 +341,12 @@ void PlayerWorker::restoreHistory(bool redo) {
         if(m_activeSequence!=index)return;
     }
     const auto label=historyLabel(from);
-    const auto counterpart=labelHistory(sourceAttributeCounterpart(target),label);
+    auto counterpart=labelHistory(sourceAttributeCounterpart(target),label);
+    // A transcript's words travel with the step both ways.
+    const auto transcriptEdit=sentinel.value(QStringLiteral("omavid:transcript")).toMap();
+    if(!transcriptEdit.isEmpty() && !counterpart.isEmpty()) {
+        auto last=counterpart.last().toMap();last.insert(QStringLiteral("omavid:transcript"),transcriptEdit);counterpart.last()=last;
+    }
     from.removeLast();to.append(counterpart);
     QVariantList replayed=target;
     if(sentinel.contains(QStringLiteral("omavid:tracks")) && !sentinel.contains("omavid:sequenceState") && !sentinel.contains("omavid:sourceState")) {
@@ -353,7 +358,7 @@ void PlayerWorker::restoreHistory(bool redo) {
         to.removeLast();from.append(target);
         if(previous!=m_activeSequence)switchSequence(previous);
         announceTimeline(false);
-    }
+    } else if(!transcriptEdit.isEmpty()) emit transcriptEditReplayed(transcriptEdit,redo);
     announceSequences();
 }
 

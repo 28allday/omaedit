@@ -764,7 +764,6 @@ void Backend::onProjectLoaded(bool ok, const QString &path, const QStringList &,
     m_pendingRanges.clear();
     m_pendingMeta.clear();
     m_pendingSubclips.clear();
-    m_markers.clear();
     QSet<QString> seen;
     QHash<QString, QVariantMap> offline; // path → the offline entry made for it
     m_restoreOrder.clear();
@@ -774,8 +773,6 @@ void Backend::onProjectLoaded(bool ok, const QString &path, const QStringList &,
         if (record.value(QStringLiteral("kind")) == QStringLiteral("clip"))
             m_restoreOrder.append(record.value(QStringLiteral("path")).toString());
     }
-    QVariantList loadedSequences;
-    int loadedActive = 0;
     // Entries placed here (offline media, subclips, multicams) are published
     // once after the loop: every libraryChanged subscriber walks the whole
     // library, so a per-entry emit made a large offline project quadratic.
@@ -785,20 +782,6 @@ void Backend::onProjectLoaded(bool ok, const QString &path, const QStringList &,
         const QString kind = record.value(QStringLiteral("kind")).toString();
         if (kind == QStringLiteral("media")) {
             m_mediaCatalog->restore(record.value(QStringLiteral("document")).toMap());
-            continue;
-        }
-        if (kind == QStringLiteral("sequences")) {
-            loadedSequences = record.value(QStringLiteral("list")).toList();
-            loadedActive = record.value(QStringLiteral("active")).toInt();
-            continue;
-        }
-        if (kind == QStringLiteral("markers")) {
-            m_markers += record.value(QStringLiteral("markers")).toList();
-            std::stable_sort(m_markers.begin(), m_markers.end(),
-                      [](const QVariant &a, const QVariant &b) {
-                          return a.toMap().value(QStringLiteral("frame")).toInt()
-                                 < b.toMap().value(QStringLiteral("frame")).toInt();
-                      });
             continue;
         }
         if (kind != QStringLiteral("clip")) continue;
@@ -878,15 +861,8 @@ void Backend::onProjectLoaded(bool ok, const QString &path, const QStringList &,
         open(QUrl::fromLocalFile(clipPath));
     }
     if (libraryGrew) emit libraryChanged();
-    emit markersChanged();
-    // The worker owns markers now — hand it the loaded list so undo
-    // snapshots taken after this load carry them. (Its echo doesn't
-    // dirty; only timeline announces do.)
-    emit setMarkersRequested(m_markers);
-    if (!loadedSequences.isEmpty()) {
-        m_sequencesEchoPending = true;
-        emit setSequencesRequested(loadedSequences, loadedActive);
-    }
+    // The project's timelines and markers are the worker's: it put them in
+    // place with the clips, before this (PlayerWorker::loadProject).
     m_restoringLibrary = false;
     syncMediaSources();
     const bool recovering = m_recoveryLoadPath == path;
@@ -1143,8 +1119,8 @@ bool Backend::hasPendingWork() const {
             !job.value("spec").toMap().value("snapshotReady", true).toBool())
             return true;
     }
-    // A load is not settled until the stored timelines have been to the
-    // worker and back (it always answers: see PlayerWorker::setSequences).
+    // A load is not settled until the worker has named the opened project's
+    // timelines (it always answers: see PlayerWorker::loadProject).
     return m_sequencesEchoPending || projectBusy() || busy() || m_mediaTasks->running() ||
            m_soundLibrary->scanning() || m_projectArchive->busy() ||
            (m_renderQueue->active() &&

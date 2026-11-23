@@ -186,17 +186,28 @@ void PlayerWorker::loadProject(const QString &path) {
         dropTrackJob(); // the clip it was for has gone
     }
     const QVariantList records = ok ? ProjectSafety::decodeLibraryState(library) : QVariantList();
-    // The file's own timelines come back through the backend a moment after
-    // this (setSequences). The one just loaded is its active timeline, so it
+    // The file's own timelines and the open one's markers are put in place
+    // here, in the same step as its clips. Handed back through the window
+    // instead, they arrived after whatever the window asked for in the
+    // meantime: a timeline made then was taken for the one just loaded and
+    // stored over it. The one just loaded is the active timeline, so it
     // carries that timeline's id from the start: a window that has shown the
     // clips must not see their timeline change its name afterwards.
     QString storedId;
+    QVariantList storedSequences, storedMarkers;
+    int storedActive = 0;
     for (const QVariant &value : records) {
         const QVariantMap record = value.toMap();
-        if (record.value(QStringLiteral("kind")) != QStringLiteral("sequences")) continue;
-        const QVariantList list = record.value(QStringLiteral("list")).toList();
-        if (!list.isEmpty())
-            storedId = list.value(qBound(0, record.value(QStringLiteral("active")).toInt(), int(list.size()) - 1))
+        const QString kind = record.value(QStringLiteral("kind")).toString();
+        if (kind == QStringLiteral("markers")) {
+            storedMarkers += record.value(QStringLiteral("markers")).toList();
+            continue;
+        }
+        if (kind != QStringLiteral("sequences")) continue;
+        storedSequences = record.value(QStringLiteral("list")).toList();
+        storedActive = record.value(QStringLiteral("active")).toInt();
+        if (!storedSequences.isEmpty())
+            storedId = storedSequences.value(qBound(0, storedActive, int(storedSequences.size()) - 1))
                            .toMap().value(QStringLiteral("id")).toString();
     }
     if (ok) {
@@ -212,12 +223,29 @@ void PlayerWorker::loadProject(const QString &path) {
         m_activeSequence = 0;
         m_sequences[0].configured = true;
         m_sequences[0].settings = m_timeline.projectSettings();
+        // The markers first: the open timeline's stored snapshot holds them.
+        std::stable_sort(storedMarkers.begin(), storedMarkers.end(), [](const QVariant &a, const QVariant &b) {
+            return a.toMap().value(QStringLiteral("frame")).toInt() < b.toMap().value(QStringLiteral("frame")).toInt();
+        });
+        setMarkers(storedMarkers);
+        if (!storedSequences.isEmpty())
+            adoptSequences(storedSequences, storedActive);
         // Which timeline it is goes out before its clips: a window drops its
         // selection when the timeline changes, and must do that before the
         // new clips can be selected, not after.
         announceSequences();
         announceTimeline();
         refreshFrame();
+        if (!storedSequences.isEmpty()) {
+            // Where the timeline was left, after the window has reset its
+            // playback for the project it opened (Backend::onProjectLoaded).
+            emit projectLoaded(ok, path, library, records);
+            announceTimeline(false);
+            m_position = m_sequences[m_activeSequence].position;
+            restoreAudioPosition(m_sequences[m_activeSequence].audioPosition);
+            refreshFrame();
+            return;
+        }
     } else {
         // The backend showed one tab while it waited — put its list back.
         // The open project keeps its timelines and its history even when its

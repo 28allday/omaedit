@@ -8,7 +8,7 @@ import OmaEdit.Ui as Ui
 // (the selected caption's track, or the one whose menu opened it), or of
 // every caption track's, and the lengths Generate Captions makes them. OK
 // restyles the captions that still follow the track's look (or all of them)
-// in one undo step; Regenerate makes the captions again from the transcripts.
+// in one undo step; Update Captions makes them again from the transcripts.
 // Its Rules are the timeline's: the limits the caption checks keep to (the
 // caption list and the Export page show what they find), and whether
 // Generate Captions names a speaker for each channel of a stereo clip.
@@ -462,7 +462,7 @@ Ui.FormDialog {
             Item { Layout.fillWidth: true }
             FlatButton {
                 objectName: "captionRegenerate"
-                text: qsTr("Regenerate Captions")
+                text: qsTr("Update Captions")
                 tip: qsTr("Make the captions again from the timeline's speech at these lengths, in this style. Words typed into captions are lost; Undo brings them back.")
                 enabled: backend.hasVideo
                 onClicked: {
@@ -580,7 +580,7 @@ Ui.FormDialog {
             id: twoSpeakersCheck
             objectName: "captionRuleTwoSpeakers"
             text: qsTr("Two speakers on left and right channels")
-            ToolTip.text: qsTr("Generate Captions names a speaker for each channel of a stereo recording made with one microphone per person")
+            ToolTip.text: qsTr("Make Captions names a speaker for each channel of a stereo recording made with one microphone per person")
             ToolTip.visible: hovered
         }
         Label {
@@ -588,7 +588,7 @@ Ui.FormDialog {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
             color: Ui.Theme.textMuted
-            text: qsTr("Only for a stereo recording made with one microphone per person, each on its own channel: Generate Captions then names the speaker of each caption by the channel the voice is louder on. It cannot tell two voices apart on one microphone or in a mixed recording.")
+            text: qsTr("Only for a stereo recording made with one microphone per person, each on its own channel: Make Captions then names the speaker of each caption by the channel the voice is louder on. It cannot tell two voices apart on one microphone or in a mixed recording.")
         }
         RowLayout {
             enabled: twoSpeakersCheck.checked

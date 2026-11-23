@@ -449,6 +449,7 @@ static void readName(edit::ClipInfo *info, const QString &path, ClipEntry &entry
         if(const char *speaker=info->producer->get("omavid:speaker"); speaker && *speaker)
             entry.speaker = QString::fromUtf8(speaker);
         entry.ownStyle = info->producer->get_int("omavid:ownStyle") != 0;
+        entry.typed = info->producer->get_int("omavid:typed") != 0;
         const char *font = info->producer->get("omavid:titleFont");
         const char *color = info->producer->get("omavid:titleColor");
         entry.titlePlace = place && *place ? QString::fromUtf8(place)

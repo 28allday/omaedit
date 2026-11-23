@@ -783,7 +783,14 @@ track is just that — a gap you can drop into, trim into, or ripple away.
   alignment, tracking, line spacing, background and outline. Text accepts
   multiple lines. Drag the title in the monitor to place it, or use
   **Edit title here** to change text directly in the viewer.
-- **Captions**: File ▸ Import Captions… reads a SubRip (`.srt`), WebVTT
+- **Captions**: everyday caption work happens in the Inspector's
+  **Transcript** tab (see *Transcript* below): make the captions from the
+  clips' speech, choose their size, place, look and colour for all of them
+  at once, and type their words beside their times. **Edit ▸ Captions**
+  holds **Make Captions**, **Add Caption**, **Export Captions…** and **More
+  Caption Settings…** (the Caption Style window); the rest below is in the
+  command palette, the Caption List panel and a caption track's header menu.
+  File ▸ Import Captions… reads a SubRip (`.srt`), WebVTT
   (`.vtt`), iTT or other timed-text (`.itt`, `.ttml`) or SCC broadcast
   caption (`.scc`) file onto dedicated caption tracks as editable titles;
   overlaps use separate tracks. A file that says its language (or whose
@@ -797,17 +804,18 @@ track is just that — a gap you can drop into, trim into, or ripple away.
   and a caption that still does not fit stops the export and is named) — and
   every caption track, a file each named by its language (`Film.en.srt`,
   `Film.fr.srt`), or one of them.
-  **Edit ▸ Captions**: **Add Caption** (Alt+C) puts a two-second caption at
-  the playhead; double-click it to write its words. **Split Caption** turns a
-  caption of several lines into one caption per line, each timed by its length.
-  **Join Captions** makes the selected neighbouring captions on one track into
-  one. **Generate Captions** writes captions from the timeline's speech using
+  **Add Caption** (Alt+C) puts a two-second caption at
+  the playhead; double-click it to write its words. **Split Caption** (command
+  palette) turns a caption of several lines into one caption per line, each
+  timed by its length. **Join Captions** (command palette) makes the selected
+  neighbouring captions on one track into one. **Make Captions** writes
+  captions from the timeline's speech using
   each clip's transcript (Inspector ▸ Transcript); clips without one are
   transcribed first, one after another, and the captions follow. Retimed clips
   are left out. A caption never lands on another: it goes to the next caption
   track instead. Each is one undo step.
-  **Edit ▸ Captions ▸ Caption Style…** (also in a caption track's header
-  menu) sets the look of a caption track's captions. **Captions on** chooses
+  **Edit ▸ Captions ▸ More Caption Settings…** (Caption Style…, also in a
+  caption track's header menu) sets the look of a caption track's captions. **Captions on** chooses
   the track: the selected caption's, or the one whose menu you opened, or
   **Every caption track**; each caption track keeps a style of its own. The
   look: font, size, colour, bold or italic; an **Outline** round the letters
@@ -834,10 +842,10 @@ track is just that — a gap you can drop into, trim into, or ripple away.
   whether it follows its track: turn it on to drop the caption's own look and
   place, or off to keep it as it is when the track's style changes. Each is
   one undo step. The same window sets how
-  Generate Captions cuts speech into captions: the most letters on a line
+  Make Captions cuts speech into captions: the most letters on a line
   (42), the most lines (2) and the shortest time on screen (1 second). A
   caption ends at the end of a sentence or at a pause, and each is timed by
-  the words in it. **Regenerate Captions** makes them again at those lengths,
+  the words in it. **Update Captions** makes them again at those lengths,
   in place of every caption on the caption tracks (words you typed into them
   are lost; Undo brings them back).
   **Window ▸ Panels ▸ Show Caption List** (also in the command palette)
@@ -858,7 +866,8 @@ track is just that — a gap you can drop into, trim into, or ripple away.
   set them in Caption Style's **Rules**. When captions go out with an export
   (a file beside it, embedded or burnt in), the Export page warns of what the
   checks find.
-  **Edit ▸ Captions ▸ Timing** (and the list's **Timing** menu) works on the
+  The timing tools (the Caption List's **Timing** menu and the command
+  palette) work on the
   selected captions, or on every one when none is selected, each in one undo
   step: **Snap Edges to Cuts…** moves a caption's start or end onto a cut in
   the picture within so many frames; **Extend to the Next Caption** makes
@@ -867,13 +876,14 @@ track is just that — a gap you can drop into, trim into, or ripple away.
   many frames last until the next; **Shift Captions…** moves them later, or
   earlier, by a number of frames. A caption never covers or passes another:
   one with something in its way stays where it was.
-  **Edit ▸ Captions ▸ Speakers…** sets the speaker of the selected captions
+  **Speakers…** (the Caption List's menu, or Caption Speakers… in the command
+  palette) sets the speaker of the selected captions
   and keeps the timeline's speakers: each has a colour, shown in the list and
   along the top of the caption's block on the timeline; click it for another.
   Rename a speaker to rename them on every caption, or remove them from every
   caption. For a stereo recording made with one microphone per person, each on
   its own channel, turn on **Two speakers on left and right channels** in the
-  Rules and name them: Generate Captions then names the speaker of each
+  Rules and name them: Make Captions then names the speaker of each
   caption by the channel the voice is louder on (the clips are transcribed
   again in stereo when they need to be). It cannot tell two voices apart on
   one microphone or in a mixed recording.
@@ -1166,16 +1176,35 @@ The × on the strip, or switching to that sequence, takes it away.
 
 ### Transcript
 
-The Inspector's **Transcript** tab transcribes the selected clip's speech
-— **Transcribe with Whisper (AI)** runs whisper.cpp on this machine over
-the clip's audio and writes the lines, with their times, onto the library
-clip (the project keeps them; the media and the timeline are never
-changed; **Clear** removes them). Search narrows the lines; click one to
-set the I/O range over those frames on the timeline, or to range the
-source viewer when the clip is only in the browser. **Make Captions** turns
-the transcripts of the timeline's clips into a caption layer, as **Edit ▸
-Captions ▸ Generate Captions** does, transcribing first any clip that has
-none.
+The Inspector's **Transcript** tab is where captions are made and edited.
+**Transcribe** runs whisper.cpp on this machine over the selected clip's
+audio and writes the lines, with their times, onto the library clip (the
+project keeps them; the media and the timeline are never changed;
+**Re-transcribe** does it again, **Clear** removes them). Each line's words
+are a box to type in: Enter, or clicking away, keeps them (one undo step;
+the line keeps its time and its words are shared out over it). Click a
+line's time to set the I/O range over those frames on the timeline, or to
+range the source viewer when the clip is only in the browser.
+
+Under **Captions**, **Make Captions** turns the transcripts of the
+timeline's clips into captions, using the words as you typed them and
+transcribing first any clip that has none. **Size** (S, M, L), **Place**
+(Top, Bottom), **Look** (Plain; Outline round the letters; Box, a dark box
+behind them; Shadow, a soft drop shadow) and **Colour** (white, yellow or
+any `#rrggbb`) set one look for every caption on every caption track, one
+undo step a click; the choice pressed is the look they have now. **More
+Caption Settings…** in Edit ▸ Captions has the rest.
+
+Once the timeline has captions the tab lists them instead, with the
+timeline's timecode: type in a caption's box to change its words (Enter
+keeps them, Shift+Enter starts a new line, Esc puts them back; one undo
+step), click its time to take the playhead there and select it. A ⚠ marks a
+caption the caption checks flag; rest the pointer on it for the reason.
+Search narrows the lines. The list follows edits made anywhere else. The
+button becomes **Update Captions**: it makes the captions again from the
+transcripts, so words you changed in a transcript are kept; if you typed
+words into the captions themselves it asks first, as those are lost (Undo
+brings them back).
 
 It needs no setup: the package brings whisper.cpp and its multilingual base
 model (`/usr/share/omaedit/whisper/ggml-base.bin`), which finds the language

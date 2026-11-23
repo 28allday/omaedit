@@ -471,7 +471,7 @@ Item {
     }
 
     // Captions: add at the playhead, split by line, join neighbours, or
-    // generate from the timeline's speech.
+    // make them from the timeline's speech (Edit ▸ Captions ▸ Make Captions).
     Ui.Command {
         commandId: "edit.caption-add"
         text: qsTr("Add Caption")
@@ -502,7 +502,7 @@ Item {
     }
     Ui.Command {
         commandId: "edit.caption-generate"
-        text: qsTr("Generate Captions")
+        text: qsTr("Make Captions")
         category: qsTr("Edit")
         scope: "Edit"
         available: win.workspace === "Edit" && backend.hasVideo

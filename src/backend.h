@@ -475,6 +475,11 @@ public:
     Q_INVOKABLE QVariantList beatLines() const;
     BeatMapper *beatMapper() const { return m_beatMapper; }
     Q_INVOKABLE void clearTranscript(int libraryIndex);
+    // One transcript line's words, typed (Inspector ▸ Transcript): the line
+    // keeps its time and loses its word timings, so Make Captions shares
+    // its words out over its time by their length. One undo step; false,
+    // with the reason in the status, when there is no such line or no words.
+    Q_INVOKABLE bool setTranscriptLine(int libraryIndex, int line, const QString &text);
     // Stacked ("pancake") timeline: another sequence shown above the main
     // one to pull clips from; -1 = none. Its entries are that sequence's
     // snapshot (taken when it was last active). Switching TO the stacked
@@ -1662,6 +1667,7 @@ signals:
     void captionSpeakerRequested(const QVariantList &indices, const QString &speaker, const QVariantMap &settings);
     void captionSettingsRequested(const QVariantMap &settings, const QString &label);
     void captionTextsRequested(const QVariantList &changes, const QString &label);
+    void transcriptEditRequested(const QVariantMap &edit, const QString &label);
     void retimeCaptionsRequested(const QVariantList &changes, const QString &label);
     void renameCaptionSpeakerRequested(const QString &from, const QString &to, const QVariantMap &settings);
     void duplicateCaptionTrackRequested(int track, const QVariantMap &language, const QString &name);
@@ -1687,6 +1693,8 @@ signals:
     void moveSequenceToBinRequested(int index, const QString &binId);
     void duplicateSequenceRequested(int index);
     void closeSequenceRequested(int index);
+    // A stored timeline list put in place of the open one's (a project load
+    // does this in the worker itself: PlayerWorker::loadProject).
     void setSequencesRequested(const QVariantList &sequences, int active);
     void sequencesChanged();
     void timelineItemsChanged();
@@ -2079,6 +2087,7 @@ private:
     Transcriber *m_transcriber = nullptr;
     int transcriptClip(const QVariantMap &job) const;
     void storeTranscript(int index, const QVariantList &segments, const QString &language);
+    void applyTranscriptEdit(const QVariantMap &edit, bool after);
     void transcriptionFinished(bool ok, int index, const QString &error);
     int m_stackedSequence = -1;
     QString m_stackedId;      // survives reordering/renaming: matched back by id
@@ -2211,8 +2220,8 @@ private:
     ProjectArchive *m_projectArchive = nullptr;
     QVariantMap m_archiveRequest;
     bool m_restoringLibrary = false;
-    // A sequence list this side just handed the worker (open, load) — its
-    // echo is not an edit.
+    // A project load asked for: the worker's first sequence list after it
+    // is the opened project's, not an edit.
     bool m_sequencesEchoPending = false;
     // Offline library entries being re-imported because their file is
     // back: path → the row the fresh entry takes.

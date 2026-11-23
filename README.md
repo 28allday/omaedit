@@ -20,7 +20,7 @@ press Enter and give your password. It downloads the package and installs it in
 one go:
 
 ```sh
-cd /tmp && curl -LO https://github.com/28allday/omaedit/releases/download/v0.2.3/omaedit-0.2.3-1-x86_64.pkg.tar.zst && sudo pacman -U omaedit-0.2.3-1-x86_64.pkg.tar.zst
+cd /tmp && curl -LO https://github.com/28allday/omaedit/releases/download/v0.2.4/omaedit-0.2.4-1-x86_64.pkg.tar.zst && sudo pacman -U omaedit-0.2.4-1-x86_64.pkg.tar.zst
 ```
 
 **Or by hand:**

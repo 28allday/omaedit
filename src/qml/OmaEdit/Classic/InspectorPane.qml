@@ -1,7 +1,9 @@
 import QtQuick
+import QtQuick.Controls as C
 import QtQuick.Layouts
 import omaedit
 import OmaEdit.Edit as Edit
+import OmaEdit.Ui as Ui
 
 // The Edit-page Inspector bound to the window's selection: a storyline clip
 // (selectedTimelineIndex) or a track clip (selectedConnectedIndex). The seam
@@ -335,7 +337,78 @@ Edit.InspectorPanel {
         name: transcriptEntry.name, libraryIndex: transcriptIndex,
         transcript: transcriptEntry.transcript !== undefined ? transcriptEntry.transcript : [],
         language: transcriptEntry.transcriptLanguage !== undefined ? transcriptEntry.transcriptLanguage : "",
+        languageName: languageName(transcriptEntry.transcriptLanguage),
         hasAudio: transcriptEntry.hasAudio !== false
+    }
+    transcriptFps: backend.fps > 0 ? backend.fps : 25
+    // A language code as people read it ("en" → English).
+    readonly property var knownLanguages: backend.captionLanguages()
+    function languageName(code) {
+        if (code === undefined || code === null || code === "") return ""
+        const known = knownLanguages.find(function (l) { return l.code === code })
+        return known ? known.name : String(code)
+    }
+    // Once the timeline has captions the tab lists those of the first
+    // caption track that holds any, and its style is the one shown.
+    readonly property var captionTrackShown: {
+        const tracks = backend.tracks, entries = backend.connected
+        const held = backend.captionCount > 0 ? backend.captionExportTracks().filter(function (t) { return t.count > 0 }) : []
+        return held.length > 0 ? held[0] : null
+    }
+    captionsMade: captionTrackShown !== null
+    captionRows: {
+        const settings = backend.captionSettings, entries = backend.connected, tracks = backend.tracks, rate = backend.fps
+        return captionTrackShown !== null ? backend.captionList({ track: captionTrackShown.track }) : []
+    }
+    captionLanguage: captionTrackShown !== null && captionTrackShown.language.code !== "und" ? captionTrackShown.language.shown : ""
+    captionStyle: {
+        const tracks = backend.tracks
+        return backend.trackCaptionStyle(captionTrackShown !== null ? captionTrackShown.track : -1)
+    }
+    onTranscriptLineEdited: function (line, text) { if (transcriptIndex >= 0) backend.setTranscriptLine(transcriptIndex, line, text) }
+    onCaptionTextEdited: function (index, text) { backend.setCaptionText(index, text) }
+    // A caption's time: the playhead to its start, the caption selected.
+    onCaptionChosen: function (index, frame) {
+        const caption = backend.connected[index]
+        if (!caption) return
+        backend.viewTimeline()
+        backend.seek(frame)
+        win.selectedEdge = -1
+        win.selection.selectOnly(caption.track, caption.index, true)
+    }
+    // The whole look at once: every caption track, every caption.
+    onCaptionStyleChosen: function (style) { backend.setTrackCaptionStyle(-1, style, true) }
+    // Update Captions makes them again; words typed into them would go.
+    onUpdateCaptionsRequested: {
+        if (backend.connected.some(function (e) { return e.caption === true && e.typed === true }))
+            updateCaptionsConfirm.open()
+        else
+            backend.regenerateCaptions()
+    }
+    Ui.MessageDialog {
+        id: updateCaptionsConfirm
+        objectName: "updateCaptionsConfirm"
+        parent: C.Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        title: qsTr("Update Captions")
+        message: qsTr("Update Captions makes the captions again from the transcript; words you changed in the captions are lost. Update?")
+        standardButtons: C.Dialog.NoButton
+        footer: Ui.DialogButtons {
+            Ui.ToolButton {
+                objectName: "updateCaptionsConfirmUpdate"
+                text: qsTr("Update")
+                tip: qsTr("Make the captions again; Undo brings back the words you typed")
+                C.DialogButtonBox.buttonRole: C.DialogButtonBox.AcceptRole
+            }
+            Ui.ToolButton {
+                objectName: "updateCaptionsConfirmCancel"
+                text: qsTr("Cancel")
+                tip: qsTr("Keep the captions as they are")
+                C.DialogButtonBox.buttonRole: C.DialogButtonBox.RejectRole
+            }
+        }
+        onAccepted: backend.regenerateCaptions()
     }
     transcribing: backend.transcriber.job.index !== undefined && backend.transcriber.job.index >= 0
                   && backend.transcriber.job.index === transcriptIndex

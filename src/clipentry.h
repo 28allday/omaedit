@@ -22,7 +22,7 @@
     X(optional, titleAlign) X(optional, titleWeight) X(optional, titleBg) X(optional, titleItalic) \
     X(optional, titleOutline) X(optional, caption) X(optional, titleTracking) X(optional, titleLineSpacing) \
     X(optional, titlePixelSize) X(optional, titleMargin) X(optional, titleWidth) X(optional, titleLook) \
-    X(optional, speaker) X(flag, ownStyle) X(plain, volume) X(plain, pan) X(plain, volumeKf) \
+    X(optional, speaker) X(flag, ownStyle) X(flag, typed) X(plain, volume) X(plain, pan) X(plain, volumeKf) \
     X(plain, eq) X(plain, fadeIn) X(plain, fadeOut) X(optional, audioCurve) \
     X(optional, audioMap) X(flag, normalize) X(plain, opacity) X(plain, opacityKf) \
     X(plain, rectX) X(plain, rectY) X(plain, rectW) X(plain, rectH) \
@@ -99,10 +99,12 @@ struct ClipEntry {
     // The fuller look (EditEngine::titleLookKeys: shadow, outline colour and
     // width, box padding and corners); absent = the look titles always had.
     std::optional<QVariantMap> titleLook;
-    // A caption's speaker ("" or absent = none), and whether it keeps a look
-    // of its own rather than its caption track's style.
+    // A caption's speaker ("" or absent = none), whether it keeps a look
+    // of its own rather than its caption track's style, and whether its
+    // words were typed by hand (Update Captions asks before replacing them).
     std::optional<QString> speaker;
     bool ownStyle = false;
+    bool typed = false;
 
     // Sound.
     double volume = 0, pan = 0;

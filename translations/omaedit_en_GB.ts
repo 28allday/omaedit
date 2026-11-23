@@ -2269,7 +2269,7 @@
             <translation>Stabilisation removed</translation>
         </message>
         <message>
-            <location filename="../src/backendcaptions.cpp" line="+17"/>
+            <location filename="../src/backendcaptions.cpp" line="+59"/>
             <source>Could not read %1</source>
             <translation>Could not read %1</translation>
         </message>
@@ -2304,7 +2304,22 @@
             <translation>%1 is not a caption style setting</translation>
         </message>
         <message>
-            <location line="+2"/>
+            <location line="-157"/>
+            <source>That clip has no such transcript line</source>
+            <translation>That clip has no such transcript line</translation>
+        </message>
+        <message>
+            <location line="+5"/>
+            <source>A transcript line needs words</source>
+            <translation>A transcript line needs words</translation>
+        </message>
+        <message>
+            <location line="+11"/>
+            <source>Transcript words</source>
+            <translation>Transcript words</translation>
+        </message>
+        <message>
+            <location line="+143"/>
             <source>size is small, medium or large</source>
             <translation>size is small, medium or large</translation>
         </message>
@@ -2449,7 +2464,7 @@
             <translation>Keep the caption&apos;s own look</translation>
         </message>
         <message numerus="yes">
-            <location filename="../src/backendcaptionlist.cpp" line="+22"/>
+            <location filename="../src/backendcaptionlist.cpp" line="+24"/>
             <source>%n caption(s) moved; %1 stayed where they were: another clip is in the way</source>
             <translation>
                 <numerusform>%n caption moved; %1 stayed where they were: another clip is in the way</numerusform>
@@ -2836,7 +2851,12 @@
             <translation>Captions copy</translation>
         </message>
         <message>
-            <location line="+359"/>
+            <location line="+290"/>
+            <source>Make Captions cannot transcribe the clips: %1</source>
+            <translation>Make Captions cannot transcribe the clips: %1</translation>
+        </message>
+        <message>
+            <location line="+69"/>
             <source>SubRip (.srt)</source>
             <translation>SubRip (.srt)</translation>
         </message>
@@ -2940,12 +2960,7 @@
             </translation>
         </message>
         <message>
-            <location line="+78"/>
-            <source>Generate Captions cannot transcribe the clips: %1</source>
-            <translation>Generate Captions cannot transcribe the clips: %1</translation>
-        </message>
-        <message>
-            <location line="+4"/>
+            <location line="+82"/>
             <source>A transcription is already running; try again when it is done</source>
             <translation>A transcription is already running; try again when it is done</translation>
         </message>
@@ -6956,11 +6971,21 @@
         </message>
         <message>
             <location line="+10"/>
-            <source>Regenerate Captions</source>
-            <translation>Regenerate Captions</translation>
+            <source>Update Captions</source>
+            <translation>Update Captions</translation>
         </message>
         <message>
-            <location line="+1"/>
+            <location line="+118"/>
+            <source>Make Captions names a speaker for each channel of a stereo recording made with one microphone per person</source>
+            <translation>Make Captions names a speaker for each channel of a stereo recording made with one microphone per person</translation>
+        </message>
+        <message>
+            <location line="+8"/>
+            <source>Only for a stereo recording made with one microphone per person, each on its own channel: Make Captions then names the speaker of each caption by the channel the voice is louder on. It cannot tell two voices apart on one microphone or in a mixed recording.</source>
+            <translation>Only for a stereo recording made with one microphone per person, each on its own channel: Make Captions then names the speaker of each caption by the channel the voice is louder on. It cannot tell two voices apart on one microphone or in a mixed recording.</translation>
+        </message>
+        <message>
+            <location line="-125"/>
             <source>Make the captions again from the timeline&apos;s speech at these lengths, in this style. Words typed into captions are lost; Undo brings them back.</source>
             <translation>Make the captions again from the timeline&apos;s speech at these lengths, in this style. Words typed into captions are lost; Undo brings them back.</translation>
         </message>
@@ -7082,17 +7107,7 @@
             <translation>Two speakers on left and right channels</translation>
         </message>
         <message>
-            <location line="+1"/>
-            <source>Generate Captions names a speaker for each channel of a stereo recording made with one microphone per person</source>
-            <translation>Generate Captions names a speaker for each channel of a stereo recording made with one microphone per person</translation>
-        </message>
-        <message>
-            <location line="+8"/>
-            <source>Only for a stereo recording made with one microphone per person, each on its own channel: Generate Captions then names the speaker of each caption by the channel the voice is louder on. It cannot tell two voices apart on one microphone or in a mixed recording.</source>
-            <translation>Only for a stereo recording made with one microphone per person, each on its own channel: Generate Captions then names the speaker of each caption by the channel the voice is louder on. It cannot tell two voices apart on one microphone or in a mixed recording.</translation>
-        </message>
-        <message>
-            <location line="+10"/>
+            <location line="+19"/>
             <source>Speaker 1</source>
             <translation>Speaker 1</translation>
         </message>
@@ -10127,67 +10142,17 @@ Drag to change length</translation>
             <translation>Paste Insert</translation>
         </message>
         <message>
-            <location line="+8"/>
+            <location line="+13"/>
             <source>Captions</source>
             <translation>Captions</translation>
         </message>
         <message>
-            <location line="+2"/>
+            <location line="+9"/>
             <source>Add Caption</source>
             <translation>Add Caption</translation>
         </message>
         <message>
-            <location line="+7"/>
-            <source>Split Caption</source>
-            <translation>Split Caption</translation>
-        </message>
-        <message>
-            <location line="+7"/>
-            <source>Join Captions</source>
-            <translation>Join Captions</translation>
-        </message>
-        <message>
-            <location line="+7"/>
-            <source>Generate Captions</source>
-            <translation>Generate Captions</translation>
-        </message>
-        <message>
-            <location line="+8"/>
-            <source>Timing</source>
-            <translation>Timing</translation>
-        </message>
-        <message>
-            <location line="+2"/>
-            <source>Snap Edges to Cuts…</source>
-            <translation>Snap Edges to Cuts…</translation>
-        </message>
-        <message>
-            <location line="+7"/>
-            <source>Extend to the Next Caption</source>
-            <translation>Extend to the Next Caption</translation>
-        </message>
-        <message>
-            <location line="+7"/>
-            <source>Close Small Gaps…</source>
-            <translation>Close Small Gaps…</translation>
-        </message>
-        <message>
-            <location line="+7"/>
-            <source>Shift Captions…</source>
-            <translation>Shift Captions…</translation>
-        </message>
-        <message>
-            <location line="+8"/>
-            <source>Speakers…</source>
-            <translation>Speakers…</translation>
-        </message>
-        <message>
-            <location line="+8"/>
-            <source>Caption Style…</source>
-            <translation>Caption Style…</translation>
-        </message>
-        <message>
-            <location line="+9"/>
+            <location line="+24"/>
             <source>Keyframes</source>
             <translation>Keyframes</translation>
         </message>
@@ -10354,7 +10319,22 @@ Drag to change length</translation>
             <translation>Replace</translation>
         </message>
         <message>
-            <location line="+3"/>
+            <location line="-254"/>
+            <source>Make Captions</source>
+            <translation>Make Captions</translation>
+        </message>
+        <message>
+            <location line="+14"/>
+            <source>Export Captions…</source>
+            <translation>Export Captions…</translation>
+        </message>
+        <message>
+            <location line="+8"/>
+            <source>More Caption Settings…</source>
+            <translation>More Caption Settings…</translation>
+        </message>
+        <message>
+            <location line="+235"/>
             <source>With Source Clip</source>
             <translation>With Source Clip</translation>
         </message>
@@ -13085,12 +13065,42 @@ Drag to change length</translation>
     <context>
         <name>InspectorPane</name>
         <message>
-            <location filename="../src/qml/OmaEdit/Classic/InspectorPane.qml" line="+43"/>
+            <location filename="../src/qml/OmaEdit/Classic/InspectorPane.qml" line="+45"/>
             <source>%1 BPM</source>
             <translation>%1 BPM</translation>
         </message>
         <message>
-            <location line="+329"/>
+            <location line="+349"/>
+            <source>Update Captions</source>
+            <translation>Update Captions</translation>
+        </message>
+        <message>
+            <location line="+1"/>
+            <source>Update Captions makes the captions again from the transcript; words you changed in the captions are lost. Update?</source>
+            <translation>Update Captions makes the captions again from the transcript; words you changed in the captions are lost. Update?</translation>
+        </message>
+        <message>
+            <location line="+5"/>
+            <source>Update</source>
+            <translation>Update</translation>
+        </message>
+        <message>
+            <location line="+1"/>
+            <source>Make the captions again; Undo brings back the words you typed</source>
+            <translation>Make the captions again; Undo brings back the words you typed</translation>
+        </message>
+        <message>
+            <location line="+5"/>
+            <source>Cancel</source>
+            <translation>Cancel</translation>
+        </message>
+        <message>
+            <location line="+1"/>
+            <source>Keep the captions as they are</source>
+            <translation>Keep the captions as they are</translation>
+        </message>
+        <message>
+            <location line="+38"/>
             <source>Ranged %1 – %2 on the timeline</source>
             <translation>Ranged %1 – %2 on the timeline</translation>
         </message>
@@ -13099,83 +13109,84 @@ Drag to change length</translation>
         <name>InspectorPanel</name>
         <message>
             <location filename="../src/qml/OmaEdit/Edit/InspectorPanel.qml" line="+151"/>
-            <location line="+1499"/>
+            <location line="+1819"/>
             <source>Stabilise</source>
             <translation>Stabilise</translation>
         </message>
         <message>
-            <location line="-1498"/>
+            <location line="-1818"/>
             <source>Lens</source>
             <translation>Lens</translation>
         </message>
         <message>
             <location line="+0"/>
-            <location line="+1093"/>
+            <location line="+1413"/>
             <source>Flip</source>
             <translation>Flip</translation>
         </message>
         <message>
-            <location line="-1092"/>
-            <location line="+807"/>
+            <location line="-1412"/>
+            <location line="+589"/>
+            <location line="+538"/>
             <source>Colour</source>
             <translation>Colour</translation>
         </message>
         <message>
-            <location line="-806"/>
-            <location line="+955"/>
+            <location line="-1126"/>
+            <location line="+1275"/>
             <source>Transform</source>
             <translation>Transform</translation>
         </message>
         <message>
-            <location line="-956"/>
-            <location line="+1130"/>
+            <location line="-1276"/>
+            <location line="+1450"/>
             <source>Crop</source>
             <translation>Crop</translation>
         </message>
         <message>
-            <location line="-1129"/>
-            <location line="+1080"/>
+            <location line="-1449"/>
+            <location line="+1400"/>
             <location line="+397"/>
             <location line="+9"/>
             <source>Opacity</source>
             <translation>Opacity</translation>
         </message>
         <message>
-            <location line="-1485"/>
+            <location line="-1805"/>
             <source>Blend</source>
             <translation>Blend</translation>
         </message>
         <message>
             <location line="+0"/>
-            <location line="+1620"/>
+            <location line="+1940"/>
             <source>Level</source>
             <translation>Level</translation>
         </message>
         <message>
-            <location line="-1619"/>
-            <location line="+1651"/>
+            <location line="-1939"/>
+            <location line="+1971"/>
             <source>Equaliser</source>
             <translation>Equaliser</translation>
         </message>
         <message>
-            <location line="-1651"/>
-            <location line="+1697"/>
+            <location line="-1971"/>
+            <location line="+2017"/>
             <source>Channels</source>
             <translation>Channels</translation>
         </message>
         <message>
-            <location line="-1696"/>
+            <location line="-2016"/>
             <source>Normalise</source>
             <translation>Normalise</translation>
         </message>
         <message>
             <location line="+0"/>
-            <location line="+1197"/>
+            <location line="+1517"/>
             <source>Speed</source>
             <translation>Speed</translation>
         </message>
         <message>
-            <location line="-1123"/>
+            <location line="-1377"/>
             <source>Stereo (as recorded)</source>
             <translation>Stereo (as recorded)</translation>
         </message>
@@ -13226,31 +13237,31 @@ Drag to change length</translation>
         </message>
         <message>
             <location line="+21"/>
-            <location line="+816"/>
+            <location line="+1070"/>
             <location line="+1"/>
             <source>Fit</source>
             <translation>Fit</translation>
         </message>
         <message>
-            <location line="-817"/>
-            <location line="+817"/>
+            <location line="-1071"/>
+            <location line="+1071"/>
             <source>Fill</source>
             <translation>Fill</translation>
         </message>
         <message>
-            <location line="-817"/>
-            <location line="+817"/>
+            <location line="-1071"/>
+            <location line="+1071"/>
             <source>Stretch</source>
             <translation>Stretch</translation>
         </message>
         <message>
-            <location line="-817"/>
-            <location line="+817"/>
+            <location line="-1071"/>
+            <location line="+1071"/>
             <source>Original size</source>
             <translation>Original size</translation>
         </message>
         <message>
-            <location line="-795"/>
+            <location line="-1049"/>
             <source>Normal</source>
             <translation>Normal</translation>
         </message>
@@ -13405,7 +13416,7 @@ Drag to change length</translation>
             <translation>Select a clip in the timeline to inspect it.</translation>
         </message>
         <message>
-            <location line="+18"/>
+            <location line="+41"/>
             <source>No clip to transcribe</source>
             <translation>No clip to transcribe</translation>
         </message>
@@ -13415,17 +13426,17 @@ Drag to change length</translation>
             <translation>Select a clip on the timeline, or in the browser.</translation>
         </message>
         <message>
-            <location line="+13"/>
+            <location line="+51"/>
             <source>Marks a feature that runs a machine-learning model on this machine</source>
             <translation>Marks a feature that runs a machine-learning model on this machine</translation>
         </message>
         <message>
-            <location line="+16"/>
+            <location line="+27"/>
             <source>Transcribe runs whisper.cpp on this machine over the clip&apos;s audio. It only writes words and times onto the library clip — the media and the timeline are never changed.</source>
             <translation>Transcribe runs whisper.cpp on this machine over the clip&apos;s audio. It only writes words and times onto the library clip — the media and the timeline are never changed.</translation>
         </message>
         <message>
-            <location line="+14"/>
+            <location line="+15"/>
             <source>Extracting audio…</source>
             <translation>Extracting audio…</translation>
         </message>
@@ -13435,62 +13446,27 @@ Drag to change length</translation>
             <translation>Transcribing… %1%</translation>
         </message>
         <message>
-            <location line="+1"/>
-            <source>Re-transcribe (AI)</source>
-            <translation>Re-transcribe (AI)</translation>
-        </message>
-        <message>
-            <location line="+0"/>
-            <source>Transcribe with Whisper (AI)</source>
-            <translation>Transcribe with Whisper (AI)</translation>
-        </message>
-        <message>
-            <location line="+9"/>
+            <location line="+12"/>
             <source>Cancel</source>
             <translation>Cancel</translation>
         </message>
         <message>
-            <location line="+7"/>
+            <location line="+8"/>
             <source>Clear</source>
             <translation>Clear</translation>
         </message>
         <message>
-            <location line="+7"/>
+            <location line="+45"/>
             <source>Make Captions</source>
             <translation>Make Captions</translation>
         </message>
         <message>
-            <location line="+1"/>
-            <source>Turn the transcripts of the timeline&apos;s clips into a caption layer, transcribing first any clip that has none</source>
-            <translation>Turn the transcripts of the timeline&apos;s clips into a caption layer, transcribing first any clip that has none</translation>
-        </message>
-        <message>
-            <location line="+9"/>
+            <location line="-36"/>
             <source>This clip has no audio.</source>
             <translation>This clip has no audio.</translation>
         </message>
         <message>
-            <location line="+17"/>
-            <source>Jump to the transcript lines containing this text</source>
-            <translation>Jump to the transcript lines containing this text</translation>
-        </message>
-        <message>
-            <location line="+3"/>
-            <source>Search the transcript…</source>
-            <translation>Search the transcript…</translation>
-        </message>
-        <message>
-            <location line="+6"/>
-            <source>%1 of %2 lines match — click one to range it</source>
-            <translation>%1 of %2 lines match — click one to range it</translation>
-        </message>
-        <message>
-            <location line="+1"/>
-            <source>%1 lines%2 — click one to range it on the timeline</source>
-            <translation>%1 lines%2 — click one to range it on the timeline</translation>
-        </message>
-        <message>
-            <location line="+188"/>
+            <location line="+401"/>
             <source>Move effect earlier</source>
             <translation>Move effect earlier</translation>
         </message>
@@ -13596,7 +13572,8 @@ Drag to change length</translation>
             <translation>Uniform scale (W = H)</translation>
         </message>
         <message>
-            <location line="+5"/>
+            <location line="-773"/>
+            <location line="+778"/>
             <source>Size</source>
             <translation>Size</translation>
         </message>
@@ -13679,7 +13656,8 @@ Drag to change length</translation>
             <translation>How much of the frame is cut off the top edge</translation>
         </message>
         <message>
-            <location line="+2"/>
+            <location line="-904"/>
+            <location line="+906"/>
             <source>Top</source>
             <translation>Top</translation>
         </message>
@@ -13689,7 +13667,8 @@ Drag to change length</translation>
             <translation>How much of the frame is cut off the bottom edge</translation>
         </message>
         <message>
-            <location line="+2"/>
+            <location line="-914"/>
+            <location line="+916"/>
             <source>Bottom</source>
             <translation>Bottom</translation>
         </message>
@@ -13805,7 +13784,8 @@ Drag to change length</translation>
             <translation>Text colour as a six-digit hex code</translation>
         </message>
         <message>
-            <location line="+7"/>
+            <location line="-545"/>
+            <location line="+552"/>
             <source>Outline</source>
             <translation>Outline</translation>
         </message>
@@ -13830,7 +13810,8 @@ Drag to change length</translation>
             <translation>Outline width</translation>
         </message>
         <message>
-            <location line="+8"/>
+            <location line="-569"/>
+            <location line="+577"/>
             <location line="+18"/>
             <source>Shadow</source>
             <translation>Shadow</translation>
@@ -13861,7 +13842,8 @@ Drag to change length</translation>
             <translation>Soft</translation>
         </message>
         <message>
-            <location line="+9"/>
+            <location line="-598"/>
+            <location line="+607"/>
             <location line="+26"/>
             <source>Box</source>
             <translation>Box</translation>
@@ -13912,7 +13894,204 @@ Drag to change length</translation>
             <translation>Play the clip backwards at the same rate</translation>
         </message>
         <message>
-            <location line="-610"/>
+            <location line="-1484"/>
+            <location line="+438"/>
+            <source>Captions</source>
+            <translation>Captions</translation>
+        </message>
+        <message numerus="yes">
+            <location line="-432"/>
+            <source>%n caption(s)</source>
+            <translation>
+                <numerusform>%n caption</numerusform>
+                <numerusform>%n captions</numerusform>
+            </translation>
+        </message>
+        <message numerus="yes">
+            <location line="+1"/>
+            <source>%n line(s)</source>
+            <translation>
+                <numerusform>%n line</numerusform>
+                <numerusform>%n lines</numerusform>
+            </translation>
+        </message>
+        <message>
+            <location line="+11"/>
+            <source>White</source>
+            <translation>White</translation>
+        </message>
+        <message>
+            <location line="+0"/>
+            <source>Yellow</source>
+            <translation>Yellow</translation>
+        </message>
+        <message>
+            <location line="+369"/>
+            <source>Re-transcribe</source>
+            <translation>Re-transcribe</translation>
+        </message>
+        <message>
+            <location line="+0"/>
+            <source>Transcribe</source>
+            <translation>Transcribe</translation>
+        </message>
+        <message>
+            <location line="+1"/>
+            <source>Transcribe the clip&apos;s speech again with whisper.cpp on this machine, in place of its words now</source>
+            <translation>Transcribe the clip&apos;s speech again with whisper.cpp on this machine, in place of its words now</translation>
+        </message>
+        <message>
+            <location line="+1"/>
+            <source>Write the clip&apos;s speech as words with whisper.cpp on this machine</source>
+            <translation>Write the clip&apos;s speech as words with whisper.cpp on this machine</translation>
+        </message>
+        <message>
+            <location line="+10"/>
+            <source>Stop transcribing; the clip keeps the words it had</source>
+            <translation>Stop transcribing; the clip keeps the words it had</translation>
+        </message>
+        <message>
+            <location line="+8"/>
+            <source>Remove the clip&apos;s transcript; captions already made stay</source>
+            <translation>Remove the clip&apos;s transcript; captions already made stay</translation>
+        </message>
+        <message>
+            <location line="+44"/>
+            <source>Update Captions</source>
+            <translation>Update Captions</translation>
+        </message>
+        <message>
+            <location line="+2"/>
+            <source>Make the captions again from the transcripts, in place of those on the timeline; words changed in a transcript are kept</source>
+            <translation>Make the captions again from the transcripts, in place of those on the timeline; words changed in a transcript are kept</translation>
+        </message>
+        <message>
+            <location line="+1"/>
+            <source>Turn the transcripts of the timeline&apos;s clips into captions, transcribing first any clip that has none</source>
+            <translation>Turn the transcripts of the timeline&apos;s clips into captions, transcribing first any clip that has none</translation>
+        </message>
+        <message>
+            <location line="+15"/>
+            <source>S</source>
+            <translation>S</translation>
+        </message>
+        <message>
+            <location line="+0"/>
+            <source>M</source>
+            <translation>M</translation>
+        </message>
+        <message>
+            <location line="+0"/>
+            <source>L</source>
+            <translation>L</translation>
+        </message>
+        <message>
+            <location line="+1"/>
+            <source>Small</source>
+            <translation>Small</translation>
+        </message>
+        <message>
+            <location line="+0"/>
+            <source>Medium</source>
+            <translation>Medium</translation>
+        </message>
+        <message>
+            <location line="+0"/>
+            <source>Large</source>
+            <translation>Large</translation>
+        </message>
+        <message>
+            <location line="+1"/>
+            <source>Text size of every caption: small, medium or large. One undo step.</source>
+            <translation>Text size of every caption: small, medium or large. One undo step.</translation>
+        </message>
+        <message>
+            <location line="+4"/>
+            <source>Place</source>
+            <translation>Place</translation>
+        </message>
+        <message>
+            <location line="+4"/>
+            <source>Where every caption sits: at the top or the bottom of the picture. One undo step.</source>
+            <translation>Where every caption sits: at the top or the bottom of the picture. One undo step.</translation>
+        </message>
+        <message>
+            <location line="+4"/>
+            <source>Look</source>
+            <translation>Look</translation>
+        </message>
+        <message>
+            <location line="+3"/>
+            <source>Plain</source>
+            <translation>Plain</translation>
+        </message>
+        <message>
+            <location line="+2"/>
+            <source>How every caption stands out: plain letters, an outline, a dark box behind, or a soft shadow. One undo step.</source>
+            <translation>How every caption stands out: plain letters, an outline, a dark box behind, or a soft shadow. One undo step.</translation>
+        </message>
+        <message>
+            <location line="+17"/>
+            <source>%1 letters on every caption. One undo step.</source>
+            <translation>%1 letters on every caption. One undo step.</translation>
+        </message>
+        <message>
+            <location line="+26"/>
+            <source>Any colour for every caption&apos;s letters, as #rrggbb; Enter sets it. One undo step.</source>
+            <translation>Any colour for every caption&apos;s letters, as #rrggbb; Enter sets it. One undo step.</translation>
+        </message>
+        <message>
+            <location line="+13"/>
+            <source>Show only the captions with these words</source>
+            <translation>Show only the captions with these words</translation>
+        </message>
+        <message>
+            <location line="+0"/>
+            <source>Show only the transcript lines with these words</source>
+            <translation>Show only the transcript lines with these words</translation>
+        </message>
+        <message>
+            <location line="+3"/>
+            <source>Search…</source>
+            <translation>Search…</translation>
+        </message>
+        <message>
+            <location line="+36"/>
+            <source>Go to this caption and select it</source>
+            <translation>Go to this caption and select it</translation>
+        </message>
+        <message>
+            <location line="+1"/>
+            <source>Mark this line&apos;s words as the range on the timeline</source>
+            <translation>Mark this line&apos;s words as the range on the timeline</translation>
+        </message>
+        <message>
+            <location line="+46"/>
+            <source>Caption words</source>
+            <translation>Caption words</translation>
+        </message>
+        <message>
+            <location line="+0"/>
+            <source>Transcript words</source>
+            <translation>Transcript words</translation>
+        </message>
+        <message>
+            <location line="+23"/>
+            <source>This caption&apos;s words: Enter keeps them (one undo step), Shift+Enter starts a new line</source>
+            <translation>This caption&apos;s words: Enter keeps them (one undo step), Shift+Enter starts a new line</translation>
+        </message>
+        <message>
+            <location line="+1"/>
+            <source>This line&apos;s words: Enter keeps them (one undo step); Make Captions uses them</source>
+            <translation>This line&apos;s words: Enter keeps them (one undo step); Make Captions uses them</translation>
+        </message>
+        <message>
+            <location line="+27"/>
+            <source>Nothing matches</source>
+            <translation>Nothing matches</translation>
+        </message>
+        <message>
+            <location line="+193"/>
             <source>Effect Layer</source>
             <translation>Effect Layer</translation>
         </message>
@@ -19886,7 +20065,7 @@ Drag to change length</translation>
             <translation>Unlock the linked audio track before changing angles.</translation>
         </message>
         <message>
-            <location filename="../src/playerworkeredits.cpp" line="+1703"/>
+            <location filename="../src/playerworkeredits.cpp" line="+1712"/>
             <source>The project, timeline or source settings changed. Add the clip again.</source>
             <translation>The project, timeline or source settings changed. Add the clip again.</translation>
         </message>
@@ -19931,7 +20110,7 @@ Drag to change length</translation>
             <translation>Could not move the render into place: %1</translation>
         </message>
         <message>
-            <location filename="../src/playerworkeredits.cpp" line="-1619"/>
+            <location filename="../src/playerworkeredits.cpp" line="-1628"/>
             <source>Append Clip</source>
             <translation>Append Clip</translation>
         </message>
@@ -19952,12 +20131,12 @@ Drag to change length</translation>
         </message>
         <message>
             <location line="+2"/>
-            <location line="+791"/>
+            <location line="+800"/>
             <source>The picture&apos;s sound stays, so its place is kept as a gap.</source>
             <translation>The picture&apos;s sound stays, so its place is kept as a gap.</translation>
         </message>
         <message>
-            <location line="-774"/>
+            <location line="-783"/>
             <source>Lift clip</source>
             <translation>Lift clip</translation>
         </message>
@@ -20037,18 +20216,18 @@ Drag to change length</translation>
         </message>
         <message>
             <location line="+45"/>
-            <location line="+327"/>
+            <location line="+336"/>
             <source>%1 is locked; nothing was trimmed.</source>
             <translation>%1 is locked; nothing was trimmed.</translation>
         </message>
         <message>
-            <location line="-324"/>
-            <location line="+329"/>
+            <location line="-333"/>
+            <location line="+338"/>
             <source>Trim clip</source>
             <translation>Trim clip</translation>
         </message>
         <message>
-            <location line="-308"/>
+            <location line="-317"/>
             <source>Unlock the clip and its linked tracks before trimming.</source>
             <translation>Unlock the clip and its linked tracks before trimming.</translation>
         </message>
@@ -20088,13 +20267,13 @@ Drag to change length</translation>
             <translation>Connect clip</translation>
         </message>
         <message>
-            <location line="+15"/>
+            <location line="+24"/>
             <source>Update title</source>
             <translation>Update title</translation>
         </message>
         <message>
-            <location line="-113"/>
-            <location line="+138"/>
+            <location line="-122"/>
+            <location line="+147"/>
             <location line="+134"/>
             <source>A transition holds that edge of the clip; nothing was trimmed.</source>
             <translation>A transition holds that edge of the clip; nothing was trimmed.</translation>
@@ -20621,12 +20800,12 @@ Drag to change length</translation>
             <translation>Marker position must be between 0 and %1 frames.</translation>
         </message>
         <message>
-            <location line="+180"/>
+            <location line="+185"/>
             <source>The timeline could not be put back as it was after this edit. Undo, or reopen the project, before saving.</source>
             <translation>The timeline could not be put back as it was after this edit. Undo, or reopen the project, before saving.</translation>
         </message>
         <message>
-            <location line="-219"/>
+            <location line="-224"/>
             <location line="+40"/>
             <source>Choose a valid marker type.</source>
             <translation>Choose a valid marker type.</translation>
@@ -20697,7 +20876,7 @@ Drag to change length</translation>
             <translation>Nudge clip</translation>
         </message>
         <message>
-            <location line="-838"/>
+            <location line="-847"/>
             <source>Append Sound</source>
             <translation>Append Sound</translation>
         </message>
@@ -20717,7 +20896,7 @@ Drag to change length</translation>
             <translation>Make nested clip</translation>
         </message>
         <message>
-            <location line="+290"/>
+            <location line="+299"/>
             <source>Delete Track</source>
             <translation>Delete Track</translation>
         </message>
@@ -21659,7 +21838,7 @@ Drag to change length</translation>
             <translation>Stabilise clip</translation>
         </message>
         <message>
-            <location filename="../src/playerworkercaptionlist.cpp" line="+153"/>
+            <location filename="../src/playerworkercaptionlist.cpp" line="+170"/>
             <source>Remove speaker</source>
             <translation>Remove speaker</translation>
         </message>
@@ -27164,12 +27343,7 @@ Saved %2. The named project and its backups will remain available.</translation>
             <translation>Join Captions</translation>
         </message>
         <message>
-            <location line="+9"/>
-            <source>Generate Captions</source>
-            <translation>Generate Captions</translation>
-        </message>
-        <message>
-            <location line="+76"/>
+            <location line="+85"/>
             <source>Cut Keyframes</source>
             <translation>Cut Keyframes</translation>
         </message>
@@ -27631,7 +27805,12 @@ Saved %2. The named project and its backups will remain available.</translation>
             <translation>Edits Use Sound Only</translation>
         </message>
         <message>
-            <location line="+259"/>
+            <location line="+250"/>
+            <source>Make Captions</source>
+            <translation>Make Captions</translation>
+        </message>
+        <message>
+            <location line="+9"/>
             <source>Caption Style…</source>
             <translation>Caption Style…</translation>
         </message>

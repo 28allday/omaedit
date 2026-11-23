@@ -15,6 +15,8 @@ void Backend::setupCaptionList() {
     });
     connect(this, &Backend::captionSettingsRequested, m_worker, &PlayerWorker::setCaptionSettings);
     connect(this, &Backend::captionTextsRequested, m_worker, &PlayerWorker::setCaptionTexts);
+    connect(this, &Backend::transcriptEditRequested, m_worker, &PlayerWorker::editTranscript);
+    connect(m_worker, &PlayerWorker::transcriptEditReplayed, this, &Backend::applyTranscriptEdit);
     connect(this, &Backend::retimeCaptionsRequested, m_worker, &PlayerWorker::retimeCaptions);
     connect(this, &Backend::renameCaptionSpeakerRequested, m_worker, &PlayerWorker::renameCaptionSpeaker);
     connect(m_worker, &PlayerWorker::captionsRetimed, this, [this](int moved, int kept) {
