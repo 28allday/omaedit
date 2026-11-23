@@ -161,7 +161,7 @@ Item {
         presetId = id
         presetName = p.name
         var s = copy(p.spec)
-        delete s.rangeIn; delete s.rangeOut; delete s.captionCues; delete s.captionTrack
+        delete s.rangeIn; delete s.rangeOut; delete s.captionCues; delete s.captionTrack; delete s.captionTracks
         // How another shape fills the frame is the preset's own: what was
         // chosen on it, or what it says.
         if (framingOf[id] !== undefined) s.framing = framingOf[id]

@@ -42,6 +42,12 @@ Item {
         inspectorPanel.setShown(inspectorPanel.hidden)
     }
 
+    readonly property bool captionListShown: !captionListPanel.hidden
+    function toggleCaptionList() {
+        layout.maximized = ""
+        captionListPanel.setShown(captionListPanel.hidden)
+    }
+
     function showInspector(tab) {
         layout.maximized = ""
         inspectorPanel.setShown(true)
@@ -75,7 +81,7 @@ Item {
             orientation: Qt.Horizontal
             C.SplitView.preferredHeight: root.height * 0.54
             C.SplitView.minimumHeight: 180
-            visible: browserPanel.docked || viewerPanel.docked || inspectorPanel.docked
+            visible: browserPanel.docked || viewerPanel.docked || inspectorPanel.docked || captionListPanel.docked
 
             Ui.DockPanel {
                 id: browserPanel
@@ -109,7 +115,8 @@ Item {
                 // Never narrower than its transport row needs, nor asking
                 // for more than the page has beside the other two at their least.
                 C.SplitView.minimumWidth: Math.max(280, Math.min(viewerPane.leastWidth,
-                    root.width - (browserPanel.docked ? 220 + Ui.Theme.wSplitter : 0) - (inspectorPanel.docked ? 280 + Ui.Theme.wSplitter : 0)))
+                    root.width - (browserPanel.docked ? 220 + Ui.Theme.wSplitter : 0) - (inspectorPanel.docked ? 280 + Ui.Theme.wSplitter : 0)
+                    - (captionListPanel.docked ? 320 + Ui.Theme.wSplitter : 0)))
 
                 ViewerPane {
                     id: viewerPane
@@ -132,6 +139,26 @@ Item {
 
                 InspectorPane {
                     id: inspectorPane
+
+                    anchors.fill: parent
+                }
+
+            }
+
+            // The caption list: hidden until asked for (Window ▸ Panels).
+            Ui.DockPanel {
+                id: captionListPanel
+
+                controller: layout
+                panelId: "captions"
+                title: qsTr("Caption List")
+                autoHidden: true
+                openWidest: 620
+                C.SplitView.preferredWidth: Math.min(openWidest, root.width * 0.3)
+                C.SplitView.minimumWidth: 320
+
+                CaptionListPanel {
+                    id: captionList
 
                     anchors.fill: parent
                 }

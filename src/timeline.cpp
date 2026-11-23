@@ -798,6 +798,10 @@ bool Timeline::restoreLaneEntry(const ClipEntry &e, int start, int clipIndex, bo
         if (e.titlePixelSize) style[QStringLiteral("pixelSize")] = *e.titlePixelSize;
         if (e.titleMargin) style[QStringLiteral("margin")] = *e.titleMargin;
         if (e.titleWidth) style[QStringLiteral("width")] = *e.titleWidth;
+        if (e.titleLook)
+            for (auto it = e.titleLook->begin(); it != e.titleLook->end(); ++it) style.insert(it.key(), it.value());
+        if (e.speaker) style[QStringLiteral("speaker")] = *e.speaker;
+        if (e.ownStyle) style[QStringLiteral("ownStyle")] = true;
         // (A title is made by its length, and a transition into it takes
         // its frames from the title's head: the entry counts them apart.)
         placed = connectTitleAt(title, start, e.frames + e.mixIn, style, laneNumber);
@@ -1188,6 +1192,7 @@ QVariantMap Timeline::snapshotDocument(const QStringList &library) const {
         {"colorspace", m_profile ? m_profile->colorspace() : 709}};
     auto document=ProjectSafety::freezeNested({{"version", 1}, {"library", library}, {"project", m_project}, {"profile", profile},
         {"tracks", trackFlagsVariant()}, {"master", m_master}, {"adr", m_adrCues}, {"entries", entries()}, {"mediaSources", m_mediaSources}});
+    if (!m_captionSettings.isEmpty()) document.insert(QStringLiteral("captions"), m_captionSettings);
     // An inactive sequence can require the newer reader even when the active
     // graph is entirely frame-based. Older builds must refuse, not round it.
     if(AudioTimeline::containsPreciseCuts(document) || AudioTimeline::containsPreciseCuts(ProjectSafety::libraryRecords(library)))document["version"]=2;
@@ -1211,12 +1216,15 @@ bool Timeline::loadDocument(const QString &path, QStringList *library) {
     const QVariantList before = entries(); const auto beforeFlags = trackFlags();
     const QVariantMap beforeProject = m_project, beforeSources = m_mediaSources, beforeProfile = m_fallbackProfile, beforeMaster = m_master;
     const QVariantList beforeAdr = m_adrCues;
+    const QVariantMap beforeCaptions = m_captionSettings;
     setProjectSettings(document.value(QStringLiteral("project")).toMap(), false);
     m_mediaSources = document.value(QStringLiteral("mediaSources")).toMap();
     m_fallbackProfile = document.value(QStringLiteral("profile")).toMap();
     m_master = document.value(QStringLiteral("master")).toMap(); m_adrCues = document.value(QStringLiteral("adr")).toList();
+    m_captionSettings = document.value(QStringLiteral("captions")).toMap();
     if (!restore(document.value(QStringLiteral("entries")).toList(), trackFlagsFromVariant(document.value(QStringLiteral("tracks")).toList()))) {
         m_project = beforeProject; m_mediaSources = beforeSources; m_fallbackProfile = beforeProfile; m_master = beforeMaster; m_adrCues = beforeAdr;
+        m_captionSettings = beforeCaptions;
         restore(before, beforeFlags); return false;
     }
     if (library) *library = document.value(QStringLiteral("library")).toStringList();

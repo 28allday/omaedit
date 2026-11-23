@@ -725,6 +725,7 @@ void PlayerWorker::swapTracks(int a, int b) {
     sentinel.insert(QStringLiteral("omavid:tracks"), m_timeline.trackFlagsVariant());
     sentinel.insert(QStringLiteral("omavid:master"), m_timeline.masterMix());
     sentinel.insert(QStringLiteral("omavid:adr"), m_timeline.adrCues());
+    sentinel.insert(QStringLiteral("omavid:captions"), m_timeline.captionSettings());
     before.append(sentinel);
     if (!m_timeline.swapTracks(a, b))
         return;

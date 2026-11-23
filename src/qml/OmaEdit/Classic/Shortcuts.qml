@@ -518,6 +518,62 @@ Item {
         shortcutEnabled: win.keysFree
         onTriggered: captionStyleDialog.openDialog()
     }
+    // Caption timing, on the selected captions or every one (one undo step
+    // each), the speakers, and the caption list.
+    Ui.Command {
+        commandId: "edit.caption-snap"
+        text: qsTr("Snap Caption Edges to Cuts…")
+        category: qsTr("Edit")
+        scope: "Edit"
+        available: win.workspace === "Edit" && backend.captionCount > 0
+        shortcutEnabled: win.keysFree
+        onTriggered: captionTimingDialog.openFor("snap", win.clipCommands.selectedCaptionIndices())
+    }
+    Ui.Command {
+        commandId: "edit.caption-extend"
+        text: qsTr("Extend Captions to the Next Caption")
+        category: qsTr("Edit")
+        scope: "Edit"
+        available: win.workspace === "Edit" && backend.captionCount > 0
+        shortcutEnabled: win.keysFree
+        onTriggered: backend.extendCaptionsToNext(win.clipCommands.selectedCaptionIndices())
+    }
+    Ui.Command {
+        commandId: "edit.caption-close-gaps"
+        text: qsTr("Close Small Gaps Between Captions…")
+        category: qsTr("Edit")
+        scope: "Edit"
+        available: win.workspace === "Edit" && backend.captionCount > 0
+        shortcutEnabled: win.keysFree
+        onTriggered: captionTimingDialog.openFor("gaps", win.clipCommands.selectedCaptionIndices())
+    }
+    Ui.Command {
+        commandId: "edit.caption-shift"
+        text: qsTr("Shift Captions…")
+        category: qsTr("Edit")
+        scope: "Edit"
+        available: win.workspace === "Edit" && backend.captionCount > 0
+        shortcutEnabled: win.keysFree
+        onTriggered: captionTimingDialog.openFor("shift", win.clipCommands.selectedCaptionIndices())
+    }
+    Ui.Command {
+        commandId: "edit.caption-speakers"
+        text: qsTr("Caption Speakers…")
+        category: qsTr("Edit")
+        scope: "Edit"
+        available: win.workspace === "Edit" && backend.hasTimeline
+        shortcutEnabled: win.keysFree
+        onTriggered: captionSpeakerDialog.openFor(win.clipCommands.selectedCaptionIndices())
+    }
+    Ui.Command {
+        commandId: "view.caption-list"
+        text: qsTr("Toggle Caption List")
+        category: qsTr("View")
+        scope: "Edit"
+        available: win.workspace === "Edit"
+        shortcutEnabled: win.keysFree && win.workspace === "Edit"
+        onTriggered: classicLayout.toggleCaptionList()
+    }
 
     // Keyframes: a clip's whole animation (picture properties and opacity).
     Ui.Command {
@@ -1783,7 +1839,7 @@ Item {
         defaultShortcuts: []
         available: backend.hasVideo
         shortcutEnabled: win.keysFree
-        onTriggered: backend.exportCaptionsDialog()
+        onTriggered: exportCaptionsDialog.openDialog()
     }
 
     Ui.Command {

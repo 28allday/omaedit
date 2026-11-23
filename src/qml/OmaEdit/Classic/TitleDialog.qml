@@ -15,6 +15,8 @@ Ui.FormDialog {
     // kept as they were: this dialog does not set them.
     property var keptMargin: undefined
     property var keptWidth: undefined
+    property string keptBg: ""
+    property var keptLook: ({})
     readonly property var sizeKeys: ["small", "medium", "large"]
     // White first = the default; stored as "" so default titles carry no
     // colour property at all.
@@ -55,6 +57,13 @@ Ui.FormDialog {
         customColor.text = color || "#ffffff"
         keptMargin = x.margin
         keptWidth = x.width
+        // A box colour the list does not hold, and the fuller look the window
+        // has no fields for, are kept.
+        keptBg = bgKeys.indexOf(x.bg || "") < 0 ? (x.bg || "") : ""
+        const look = {}
+        ;["shadow", "shadowColor", "shadowOffset", "shadowSoftness", "outlineColor", "outlineWidth", "boxPadding", "boxRadius"]
+            .forEach(function (k) { if (x[k] !== undefined && x[k] !== null) look[k] = x[k] })
+        keptLook = look
         open()
     }
 
@@ -144,6 +153,7 @@ Ui.FormDialog {
                 Accessible.name: tip
                 id: bgBox
                 objectName: "titleBgBox"
+                onActivated: titleDialog.keptBg = ""
                 tip: qsTr("Box drawn behind the text so it reads over the picture")
                 model: ["No background", "Dark box", "Light box", "Black box"]
                 Layout.preferredWidth: 150
@@ -194,7 +204,7 @@ Ui.FormDialog {
     }
 
     onAboutToShow: titleField.forceActiveFocus()
-    onClosed: editIndex = -1
+    onClosed: { editIndex = -1; keptBg = ""; keptLook = ({}) }
     onAccepted: {
         // OK does not take keyboard focus. Commit a numeric field still being
         // typed before reading the title's settings.
@@ -216,6 +226,8 @@ Ui.FormDialog {
         if(pixelField.value>0)style.pixelSize=pixelField.value
         if (keptMargin !== undefined && keptMargin !== null) style.margin = keptMargin
         if (keptWidth !== undefined && keptWidth !== null) style.width = keptWidth
+        if (keptBg !== "" && bgBox.currentIndex === 0) style.bg = keptBg
+        Object.keys(keptLook).forEach(function (k) { style[k] = keptLook[k] })
         if (editIndex >= 0)
             backend.updateTitle(editIndex, titleField.text, style)
         else

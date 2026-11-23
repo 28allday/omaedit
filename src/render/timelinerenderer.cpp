@@ -1110,13 +1110,7 @@ struct TimelineRenderer::State {
             return Shown{id, size.width(), size.height(), pixelAspect()};
         }
         if (!e.value("title").toString().isEmpty()) {
-            QVariantMap style;
-            for (const auto &key : QStringList{"Font", "Color", "Size", "Place", "Align", "Weight", "Italic", "Bg", "Outline",
-                                               "PixelSize", "Tracking", "LineSpacing", "Margin", "Width"}) {
-                QString name = key;
-                name[0] = name[0].toLower();
-                style[name] = e.value("title" + key);
-            }
+            const QVariantMap style = EditEngine::titleStyleOfEntry(e);
             // The same text and style draw the same picture on every frame:
             // drawn once and kept in its source.
             const QString key = QStringLiteral("title %1x%2 ").arg(size.width()).arg(size.height())

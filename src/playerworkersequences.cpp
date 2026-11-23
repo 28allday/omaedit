@@ -195,7 +195,7 @@ void PlayerWorker::addSequence(const QString &name) {
     m_position = 0;
     m_timeline.clear();
     m_timeline.setMasterMixMap({});
-    m_timeline.setAdrCues({});
+    m_timeline.setAdrCues({}); m_timeline.setCaptionSettings({});
     if (!m_markers.isEmpty()) {
         m_markers.clear();
         emit markersChanged(m_markers);
@@ -260,7 +260,7 @@ void PlayerWorker::importSequence(const QString &name, const QVariantList &snaps
     m_activeSequence = m_sequences.size() - 1;
     m_sourceMode = false;
     m_lastEditGesture = 0;
-    m_timeline.setMasterMixMap({}); m_timeline.setAdrCues({});
+    m_timeline.setMasterMixMap({}); m_timeline.setAdrCues({}); m_timeline.setCaptionSettings({});
     for (int lane = 0; lane < trackNames.size(); ++lane)
         if (!trackNames.at(lane).isEmpty()) m_timeline.setTrackName(lane, trackNames.at(lane));
     if (m_markers != markers) { m_markers = markers; emit markersChanged(m_markers); }
@@ -341,6 +341,7 @@ void PlayerWorker::addSyncedClip(const QString &name, const QVariantList &items,
     sentinel.insert(QStringLiteral("omavid:tracks"), scratch.trackFlagsVariant());
     sentinel.insert(QStringLiteral("omavid:master"), scratch.masterMix());
     sentinel.insert(QStringLiteral("omavid:adr"), scratch.adrCues());
+    sentinel.insert(QStringLiteral("omavid:captions"), scratch.captionSettings());
     seq.snapshot.append(sentinel);
     m_sequences.append(seq);
     recordSequenceEdit(before, tr("Sync Clips"));
@@ -367,7 +368,7 @@ void PlayerWorker::switchSequence(int index) {
     if (target.snapshot.isEmpty()) {
         m_timeline.clear();
         m_timeline.setMasterMixMap({});
-        m_timeline.setAdrCues({});
+        m_timeline.setAdrCues({}); m_timeline.setCaptionSettings({});
         if (!m_markers.isEmpty()) {
             m_markers.clear();
             emit markersChanged(m_markers);

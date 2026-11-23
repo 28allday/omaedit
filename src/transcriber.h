@@ -52,7 +52,10 @@ class Transcriber : public QObject {
     bool running() const { return m_process && m_process->state() != QProcess::NotRunning; }
     // Transcribes the file at `path`. `index` and `libraryId` name the clip
     // for the job map, `name` for the status line. Call only when available() and not active().
-    void start(int index, const QString &path, const QString &libraryId, const QString &name);
+    // With `twoSpeakers` the sound goes to whisper in stereo, run with
+    // --diarize: each segment it finds louder on one channel is that
+    // channel's speaker (segment "channel" 0 left, 1 right, -1 neither).
+    void start(int index, const QString &path, const QString &libraryId, const QString &name, bool twoSpeakers = false);
     Q_INVOKABLE void cancel();
     // Stops without a word, for an owner that is going away.
     void abandon();
@@ -60,8 +63,11 @@ class Transcriber : public QObject {
     // finished text for the clip at that index.
     std::function<int(const QVariantMap &job)> locate;
     std::function<void(int index, const QVariantList &segments, const QString &language)> store;
-    // whisper.cpp -oj output as [{start, end, text}] in ms.
+    // whisper.cpp -oj output as [{start, end, text}] in ms (and with
+    // --diarize each segment's channel).
     static QVariantList parseWhisperJson(const QByteArray &json, QString *language);
+    // Whether a transcript was made with each channel a speaker.
+    static bool hasChannels(const QVariantList &segments);
   signals:
     void settingsChanged();
     void jobChanged();

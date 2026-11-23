@@ -342,6 +342,15 @@ ApplicationWindow {
     // go through the backend's *Clips invokables — one undo step each.
     // Setting the primary directly (every single-click path) drops the
     // extras unless `holdExtras` is up.
+    // Each caption speaker's colour by name (the caption list's and the
+    // caption blocks' on the timeline).
+    readonly property var speakerColours: {
+        const settings = backend.captionSettings, entries = backend.connected
+        const out = {}
+        const speakers = backend.captionSpeakers()
+        for (let i = 0; i < speakers.length; ++i) out[speakers[i].name] = speakers[i].colour
+        return out
+    }
     property var extraSelection: []
     // A clicked gap — empty space between clips on one track, as
     // {track, start, frames} — or null. Clips and gaps never share a
@@ -1018,8 +1027,12 @@ ApplicationWindow {
 
     Classic.TitleDialog { id: titleDialog }
     Classic.CaptionStyleDialog { id: captionStyleDialog }
+    Classic.CaptionLanguageDialog { id: captionLanguageDialog }
+    Classic.CaptionTimingDialog { id: captionTimingDialog }
+    Classic.CaptionSpeakerDialog { id: captionSpeakerDialog }
     Classic.MulticamDialog { id: multicamDialog; objectName: "multicamDialog" }
     Classic.MarkerDialog { id: markerDialog; objectName: "markerDialog" }
+    Classic.ExportCaptionsDialog { id: exportCaptionsDialog }
     Classic.PasteAttributesDialog { id: pasteAttributesDialog; objectName: "pasteAttributesDialog" }
     Classic.VolumeDialog { id: volumeDialog; objectName: "volumeDialog" }
     Classic.ChangeDurationDialog { id: changeDurationDialog }

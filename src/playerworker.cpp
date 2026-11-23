@@ -342,6 +342,7 @@ void PlayerWorker::announceTimeline(bool contentEdit) {
     emit tracksChanged(m_timeline.tracks());
     emit masterChanged(m_timeline.masterMix());
     emit adrCuesChanged(m_timeline.adrCues());
+    emit captionSettingsChanged(m_timeline.captionSettings());
     emit projectSettingsChanged(m_timeline.projectSettings(), projectRateLocked());
     queueFilmstrips();
     refreshTwoUp(); // the edit point's neighbours may have changed

@@ -46,6 +46,7 @@ bool restoreTimeline(Timeline *timeline,const QVariantList &snapshot) {
     if(restored) {
         timeline->setMasterMixMap(state.value("omavid:master").toMap());
         timeline->setAdrCues(state.value("omavid:adr").toList());
+        timeline->setCaptionSettings(state.value("omavid:captions").toMap());
     }
     return restored;
 }

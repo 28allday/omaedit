@@ -136,17 +136,32 @@ int main(int argc, char *argv[]) {
             // OMAEDIT_GRAB_OPEN="projectSettings:openFor" calls a method on a
             // named child first — a dialog that only a key or menu opens.
             // A third part is passed as the method's one argument
-            // ("preferences:openAt:storage").
-            QTimer::singleShot(1600, window, [window] {
-                const QString spec = QString::fromLocal8Bit(qgetenv("OMAEDIT_GRAB_OPEN"));
-                const QStringList parts = spec.split(QLatin1Char(':'));
-                if (parts.size() < 2 || parts.first().isEmpty())
-                    return;
-                if (QObject *target = window->findChild<QObject *>(parts.at(0))) {
-                    if (parts.size() > 2)
-                        QMetaObject::invokeMethod(target, parts.at(1).toUtf8().constData(), Q_ARG(QVariant, parts.mid(2).join(QLatin1Char(':'))));
-                    else
-                        QMetaObject::invokeMethod(target, parts.at(1).toUtf8().constData());
+            // ("preferences:openAt:storage"), or split at '|' as two
+            // ("workspace:Deliver:edit:subtitles|sidecar"); calls are
+            // separated by ';'. OMAEDIT_GRAB_OPEN_MS waits longer (a page
+            // that loads when shown).
+            QTimer::singleShot(qBound(1600, qEnvironmentVariableIntValue("OMAEDIT_GRAB_OPEN_MS"), 60000), window, [window] {
+                const QString all = QString::fromLocal8Bit(qgetenv("OMAEDIT_GRAB_OPEN"));
+                for (const QString &spec : all.split(QLatin1Char(';'), Qt::SkipEmptyParts)) {
+                    // The child's name may itself hold a ':' ("workspace:Deliver").
+                    QStringList parts = spec.split(QLatin1Char(':'));
+                    QObject *target = nullptr;
+                    for (int k = 1; k < parts.size() && !target; ++k)
+                        if ((target = window->findChild<QObject *>(parts.mid(0, k).join(QLatin1Char(':')))))
+                            parts = QStringList{parts.mid(0, k).join(QLatin1Char(':'))} + parts.mid(k);
+                    if (parts.size() < 2 || !target) {
+                        qWarning().noquote() << "grab: nothing named in" << spec;
+                        continue;
+                    }
+                    const QByteArray method = parts.at(1).toUtf8();
+                    const QString argument = parts.mid(2).join(QLatin1Char(':'));
+                    const QStringList two = argument.split(QLatin1Char('|'));
+                    const bool called = parts.size() > 2 && two.size() == 2
+                        ? QMetaObject::invokeMethod(target, method.constData(), Q_ARG(QVariant, two.at(0)), Q_ARG(QVariant, two.at(1)))
+                        : parts.size() > 2 ? QMetaObject::invokeMethod(target, method.constData(), Q_ARG(QVariant, argument))
+                                           : QMetaObject::invokeMethod(target, method.constData());
+                    if (!called)
+                        qWarning().noquote() << "grab: could not call" << spec;
                 }
             });
             const int captureDelay = qBound(2600, qEnvironmentVariableIntValue("OMAEDIT_GRAB_DELAY_MS"), 60000);

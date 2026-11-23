@@ -122,7 +122,24 @@ unrelated fields. Use the actual catalogue for grades, masks, mixer routing,
 effects, captions, interchange and archive operations.
 To restyle or reposition captions, call `editor.setCaptionStyle` once with the
 style keys you change (see `editor.captionStyleSettings`) rather than editing
-each caption's title.
+each caption's title; `editor.setTrackCaptionStyle` styles one caption track
+(shadow, outline colour and width, box opacity, padding and corners too).
+Give a caption track a language with `editor.setCaptionTrackLanguage`, make a
+translation track with `editor.duplicateCaptionTrack`, and change one caption
+with `editor.setCaptionLook`, `editor.setCaptionSpeaker` or
+`editor.useTrackCaptionStyle`.
+Read every caption with its times, speaker and problems from
+`editor.captionList` (filter `{}` for all); change words with
+`editor.setCaptionText` or `editor.replaceCaptionText`; retime with
+`editor.snapCaptionsToCuts`, `editor.extendCaptionsToNext`,
+`editor.closeCaptionGaps` or `editor.shiftCaptions` (`[]` = every caption);
+set the checks' limits with `editor.setCaptionRules` and speakers' colours
+with `editor.setCaptionSpeakerColour`.
+Write caption files with `editor.exportCaptionFiles` (`srt`, `vtt`, `itt` or
+`scc`; `track: -1` gives a file per caption track named by its language); in
+a render spec, `subtitles: "embed"` puts each caption track in as its own
+stream with its language, and `"sidecar"` with `sidecarFormat` writes a file
+for each.
 
 ## Values and verification
 

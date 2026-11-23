@@ -262,7 +262,7 @@ void PlayerWorker::resetTimeline(const QVariantMap &settings) {
     m_position = 0;
     m_timeline.clear();
     m_timeline.setMasterMixMap({});
-    m_timeline.setAdrCues({});
+    m_timeline.setAdrCues({}); m_timeline.setCaptionSettings({});
     m_timeline.setProjectSettings(settings);
     if (!m_markers.isEmpty()) {
         m_markers.clear();

@@ -26,6 +26,10 @@ BinContextMenu 1.0 BinContextMenu.qml
 RulerContextMenu 1.0 RulerContextMenu.qml
 TitleDialog 1.0 TitleDialog.qml
 CaptionStyleDialog 1.0 CaptionStyleDialog.qml
+CaptionLanguageDialog 1.0 CaptionLanguageDialog.qml
+CaptionListPanel 1.0 CaptionListPanel.qml
+CaptionTimingDialog 1.0 CaptionTimingDialog.qml
+CaptionSpeakerDialog 1.0 CaptionSpeakerDialog.qml
 MarkerDialog 1.0 MarkerDialog.qml
 VolumeDialog 1.0 VolumeDialog.qml
 ChangeDurationDialog 1.0 ChangeDurationDialog.qml
@@ -73,6 +77,7 @@ ClipMarkers 1.0 ClipMarkers.qml
 TimelineActionMenus 1.0 TimelineActionMenus.qml
 RollEditMenu 1.0 RollEditMenu.qml
 EffectCatalogue 1.0 EffectCatalogue.qml
+ExportCaptionsDialog 1.0 ExportCaptionsDialog.qml
 ClipAttributes 1.0 ClipAttributes.qml
 SelectionSound 1.0 SelectionSound.qml
 TimelineSnapping 1.0 TimelineSnapping.qml

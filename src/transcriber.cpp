@@ -218,7 +218,7 @@ void Transcriber::setJob(const QVariantMap &job) {
     emit jobChanged();
 }
 
-void Transcriber::start(int index, const QString &path, const QString &libraryId, const QString &name) {
+void Transcriber::start(int index, const QString &path, const QString &libraryId, const QString &name, bool twoSpeakers) {
     const QDir dir(StoragePreferences::cacheRoot()
                    + QStringLiteral("/omaedit-transcripts"));
     if (!dir.exists())
@@ -234,15 +234,16 @@ void Transcriber::start(int index, const QString &path, const QString &libraryId
     // The index can name another clip by the time whisper is done (a removal,
     // another project): the result goes to the clip with this ID only.
     setJob({{QStringLiteral("index"), index}, {QStringLiteral("path"), path},
-            {QStringLiteral("libraryId"), libraryId},
+            {QStringLiteral("libraryId"), libraryId}, {QStringLiteral("twoSpeakers"), twoSpeakers},
             {QStringLiteral("stage"), QStringLiteral("audio")}, {QStringLiteral("percent"), 0}});
     emit message(tr("AI · extracting audio from %1…").arg(name));
-    // Stage 1: ffmpeg → 16 kHz mono WAV (what whisper.cpp reads).
+    // Stage 1: ffmpeg → 16 kHz mono WAV (what whisper.cpp reads); stereo
+    // when each channel is a speaker.
     m_process = std::make_unique<QProcess>();
     m_process->setProgram(QStandardPaths::findExecutable(QStringLiteral("ffmpeg")));
     m_process->setArguments({QStringLiteral("-y"), QStringLiteral("-nostdin"), QStringLiteral("-loglevel"),
                                     QStringLiteral("error"), QStringLiteral("-i"), path, QStringLiteral("-vn"),
-                                    QStringLiteral("-ac"), QStringLiteral("1"), QStringLiteral("-ar"),
+                                    QStringLiteral("-ac"), twoSpeakers ? QStringLiteral("2") : QStringLiteral("1"), QStringLiteral("-ar"),
                                     QStringLiteral("16000"), QStringLiteral("-f"), QStringLiteral("wav"),
                                     m_wav});
     connect(m_process.get(), &QProcess::readyReadStandardError, this, [this] {
@@ -291,6 +292,9 @@ void Transcriber::textStage(bool onCpu) {
     // chosen, or only a software Vulkan device, on which whisper.cpp is
     // many times slower than on the processor) and on the second try after
     // a run on the GPU failed, it runs on the processor.
+    // Each channel a speaker: whisper.cpp tells which is the louder in each segment.
+    if (m_job.value(QStringLiteral("twoSpeakers")).toBool())
+        arguments << QStringLiteral("--diarize");
     const int gpu = onCpu ? -1 : render::engineGpu();
     QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
     if (gpu < 0)
@@ -413,6 +417,11 @@ QVariantList Transcriber::parseWhisperJson(const QByteArray &json, QString *lang
         const int to = qMax(from, offsets.value(QStringLiteral("to")).toInt());
         QVariantMap segment{{QStringLiteral("start"), from}, {QStringLiteral("end"), to},
                             {QStringLiteral("text"), text}};
+        // --diarize: "0" louder on the left, "1" on the right, "?" neither.
+        if (seg.contains(QStringLiteral("speaker"))) {
+            const QString speaker = seg.value(QStringLiteral("speaker")).toString();
+            segment.insert(QStringLiteral("channel"), speaker == QLatin1String("0") ? 0 : speaker == QLatin1String("1") ? 1 : -1);
+        }
         QVariantList words;
         QVariantMap word;
         const auto keep = [&] {
@@ -441,4 +450,10 @@ QVariantList Transcriber::parseWhisperJson(const QByteArray &json, QString *lang
         out.append(segment);
     }
     return out;
+}
+
+bool Transcriber::hasChannels(const QVariantList &segments) {
+    for (const QVariant &v : segments)
+        if (v.toMap().contains(QStringLiteral("channel"))) return true;
+    return false;
 }

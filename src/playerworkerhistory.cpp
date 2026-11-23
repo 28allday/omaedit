@@ -45,6 +45,7 @@ QVariantList PlayerWorker::snapshotNow() {
     sentinel.insert(QStringLiteral("omavid:tracks"), m_timeline.trackFlagsVariant());
     sentinel.insert(QStringLiteral("omavid:master"), m_timeline.masterMix());
     sentinel.insert(QStringLiteral("omavid:adr"), m_timeline.adrCues());
+    sentinel.insert(QStringLiteral("omavid:captions"), m_timeline.captionSettings());
     snap.append(sentinel);
     return snap;
 }
@@ -391,6 +392,7 @@ bool PlayerWorker::restoreSnapshot(const QVariantList &snapshot, bool contentEdi
     bool hasTracks = false;
     QVariantMap colorSnapshots;
     QVariantMap audioMaster; QVariantList audioCues; bool hasAudioMix = false;
+    QVariantMap captionSettings; bool hasCaptionSettings = false;
     bool hasColorSnapshots=false;
     std::vector<Timeline::TrackFlags> tracks;
     if (!clips.isEmpty()) {
@@ -400,6 +402,8 @@ bool PlayerWorker::restoreSnapshot(const QVariantList &snapshot, bool contentEdi
             hasAudioMix = last.contains("omavid:master");
             audioMaster = last.value("omavid:master").toMap();
             audioCues = last.value("omavid:adr").toList();
+            hasCaptionSettings = last.contains("omavid:captions");
+            captionSettings = last.value("omavid:captions").toMap();
             hasColorSnapshots=last.contains("omavid:colorSequences");
             colorSnapshots=last.value("omavid:colorSequences").toMap();
             const QVariantList markers =
@@ -423,6 +427,7 @@ bool PlayerWorker::restoreSnapshot(const QVariantList &snapshot, bool contentEdi
                               : m_timeline.rebuild(clips, fallback);
     if(!ok && m_markers!=previousMarkers) {m_markers=previousMarkers;emit markersChanged(m_markers);}
     if (ok && hasAudioMix) { m_timeline.setMasterMixMap(audioMaster); m_timeline.setAdrCues(audioCues); }
+    if (ok && hasCaptionSettings) m_timeline.setCaptionSettings(captionSettings);
     if(ok && hasColorSnapshots)restoreColorSnapshots(colorSnapshots);
     announceTimeline(contentEdit);
     m_position = qBound(0, m_position, qMax(0, m_timeline.frameCount() - 1));

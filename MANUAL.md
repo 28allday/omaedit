@@ -783,12 +783,20 @@ track is just that — a gap you can drop into, trim into, or ripple away.
   alignment, tracking, line spacing, background and outline. Text accepts
   multiple lines. Drag the title in the monitor to place it, or use
   **Edit title here** to change text directly in the viewer.
-- **Captions**: File ▸ Import Captions… reads a `.srt` or `.vtt` file
-  onto dedicated caption tracks as editable lower-third titles; overlaps
-  use separate tracks. The **CC** role survives renaming and prevents ordinary
-  media placements. Toggle **Burn captions into video** in each header menu;
-  The Export page’s subtitle mode controls the overall export. File ▸ Export
-  Captions… writes all caption tracks back out as `.srt`.
+- **Captions**: File ▸ Import Captions… reads a SubRip (`.srt`), WebVTT
+  (`.vtt`), iTT or other timed-text (`.itt`, `.ttml`) or SCC broadcast
+  caption (`.scc`) file onto dedicated caption tracks as editable titles;
+  overlaps use separate tracks. A file that says its language (or whose
+  name does, as in `Film.fr.srt`) goes on a caption track of that language,
+  made for it when there is none. A caption track stays one when renamed
+  and takes no ordinary media. Toggle **Burn captions into video** in each
+  header menu; the Export page’s subtitle mode controls the overall export.
+  **File ▸ Export Captions…** chooses the format — SubRip, WebVTT (keeps the
+  captions at the top or bottom and their alignment), iTT for video stores,
+  or SCC for broadcast (up to 4 rows of 32 letters; long lines are wrapped,
+  and a caption that still does not fit stops the export and is named) — and
+  every caption track, a file each named by its language (`Film.en.srt`,
+  `Film.fr.srt`), or one of them.
   **Edit ▸ Captions**: **Add Caption** (Alt+C) puts a two-second caption at
   the playhead; double-click it to write its words. **Split Caption** turns a
   caption of several lines into one caption per line, each timed by its length.
@@ -799,20 +807,76 @@ track is just that — a gap you can drop into, trim into, or ripple away.
   are left out. A caption never lands on another: it goes to the next caption
   track instead. Each is one undo step.
   **Edit ▸ Captions ▸ Caption Style…** (also in a caption track's header
-  menu) sets one look for every caption on the timeline: font, size, colour,
-  bold or italic, outline and background box, and where they sit: **Bottom**,
-  **Top** or **Centre**, the distance from that edge (a percentage of the
-  frame's height) and the width the words wrap in (a percentage of its width).
-  **OK** restyles the captions that still have the timeline's look in one undo
+  menu) sets the look of a caption track's captions. **Captions on** chooses
+  the track: the selected caption's, or the one whose menu you opened, or
+  **Every caption track**; each caption track keeps a style of its own. The
+  look: font, size, colour, bold or italic; an **Outline** round the letters
+  with its colour and width; a soft **Shadow** with its colour, how far it
+  falls (offset) and how soft its edge is; a **Box** behind the words with
+  its colour, opacity, padding (automatic, a quarter of the text height, or
+  so many pixels) and rounded corners. Sizes in pixels are the timeline
+  frame's. Where they sit: **Bottom**, **Top** or **Centre**, the distance
+  from that edge (a percentage of the frame's height) and the width the
+  words wrap in (a percentage of its width). The viewer, the export and
+  burnt-in captions draw all of it alike.
+  **OK** restyles the captions that still follow the track's look in one undo
   step; a caption you gave a look of its own, or dragged elsewhere in the
   viewer, keeps it unless you choose **Every caption takes this style**. New,
-  imported and generated captions take the style. The same window sets how
+  imported and generated captions take the style of the track they land on.
+  A caption track's header menu also shows its **Language** (Not set until
+  you choose one: English, French, Portuguese (Brazil) and so on, or any
+  language code) and offers **Duplicate Caption Track as a New Language…**:
+  a new caption track with a copy of every caption and the style, in the
+  language you choose, ready to translate. The copy is not burnt in until you
+  turn that on in its menu. Select a caption and the Inspector's **Caption**
+  section shows its **Speaker**, alignment, position and look; change any of
+  them and the caption keeps a look of its own. **Uses the track style** says
+  whether it follows its track: turn it on to drop the caption's own look and
+  place, or off to keep it as it is when the track's style changes. Each is
+  one undo step. The same window sets how
   Generate Captions cuts speech into captions: the most letters on a line
   (42), the most lines (2) and the shortest time on screen (1 second). A
   caption ends at the end of a sentence or at a pause, and each is timed by
   the words in it. **Regenerate Captions** makes them again at those lengths,
   in place of every caption on the caption tracks (words you typed into them
   are lost; Undo brings them back).
+  **Window ▸ Panels ▸ Show Caption List** (also in the command palette)
+  lists every caption of the timeline in time order: its
+  start, end and length, its track's language, its speaker in their colour
+  and its words. Type in a row to change the words: Enter keeps them
+  (Shift+Enter starts a new line), Esc puts them back. Click a row to take the
+  playhead to the caption and select it; Ctrl-click adds it to the selection.
+  Show one caption track or speaker, only the captions with a problem, or
+  those with the words in **Find**; **Replace** changes them in the selected
+  caption and **Replace All** in every caption listed, in one undo step. The
+  list follows every edit, made in it or anywhere else.
+  The caption checks mark a caption that reads faster than 17 characters a
+  second, has a line longer than 42 letters or more than 2 lines, stays on
+  screen less than 0.83 seconds or more than 7, is followed by the next
+  caption on its track after fewer than 2 frames (straight after is fine), or
+  overlaps the next. Each mark says why. The limits are the timeline's own:
+  set them in Caption Style's **Rules**. When captions go out with an export
+  (a file beside it, embedded or burnt in), the Export page warns of what the
+  checks find.
+  **Edit ▸ Captions ▸ Timing** (and the list's **Timing** menu) works on the
+  selected captions, or on every one when none is selected, each in one undo
+  step: **Snap Edges to Cuts…** moves a caption's start or end onto a cut in
+  the picture within so many frames; **Extend to the Next Caption** makes
+  each last until the next caption on its track, less the gap the rules ask
+  for; **Close Small Gaps…** makes a caption followed by a gap shorter than so
+  many frames last until the next; **Shift Captions…** moves them later, or
+  earlier, by a number of frames. A caption never covers or passes another:
+  one with something in its way stays where it was.
+  **Edit ▸ Captions ▸ Speakers…** sets the speaker of the selected captions
+  and keeps the timeline's speakers: each has a colour, shown in the list and
+  along the top of the caption's block on the timeline; click it for another.
+  Rename a speaker to rename them on every caption, or remove them from every
+  caption. For a stereo recording made with one microphone per person, each on
+  its own channel, turn on **Two speakers on left and right channels** in the
+  Rules and name them: Generate Captions then names the speaker of each
+  caption by the channel the voice is louder on (the clips are transcribed
+  again in stereo when they need to be). It cannot tell two voices apart on
+  one microphone or in a mixed recording.
 - **Timeline interchange**: File ▸ Import Timeline… reads an OpenTimelineIO
   (`.otio`), CMX 3600 EDL (`.edl`), XML timeline (`.fcpxml`), legacy XML
   timeline (`.xml`) or AAF (`.aaf`) file as a new sequence in the current
@@ -1612,8 +1676,10 @@ engine that plays the timeline.
   Rec.601, sRGB, Rec.2020, HDR PQ, HDR HLG — all but Rec.709 and Rec.601
   need colour management: switch the colour engine to OpenColorIO in the
   Colour workspace first), audio codec / bitrate /
-  sample rate / channels, subtitles (burn in, embed as a track, or a
-  sidecar .srt), metadata (title, artist, copyright…) and hardware
+  sample rate / channels, subtitles (burn in; embed as a track — every
+  caption track becomes a stream of its own, tagged and named with its
+  language; or sidecar files — one for each caption track, named by its
+  language, as SubRip, WebVTT, iTT or SCC), metadata (title, artist, copyright…) and hardware
   acceleration (NVIDIA NVENC through the engine, VAAPI through ffmpeg;
   each H.264/HEVC/AV1 encoder is tested independently). VA-API can choose a
   tested device for the current codec automatically, or use an explicit render

@@ -441,7 +441,14 @@ static void readName(edit::ClipInfo *info, const QString &path, ClipEntry &entry
             if(values.contains("pixelSize"))entry.titlePixelSize = values["pixelSize"];
             if(values.contains("margin"))entry.titleMargin = values["margin"];
             if(values.contains("width"))entry.titleWidth = values["width"];
+            QVariantMap look;
+            for(const QString &key:EditEngine::titleLookKeys())
+                if(values.contains(key))look.insert(key,values.value(key));
+            if(!look.isEmpty())entry.titleLook = look;
         }
+        if(const char *speaker=info->producer->get("omavid:speaker"); speaker && *speaker)
+            entry.speaker = QString::fromUtf8(speaker);
+        entry.ownStyle = info->producer->get_int("omavid:ownStyle") != 0;
         const char *font = info->producer->get("omavid:titleFont");
         const char *color = info->producer->get("omavid:titleColor");
         entry.titlePlace = place && *place ? QString::fromUtf8(place)

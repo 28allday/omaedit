@@ -76,6 +76,12 @@ Item {
         objectName: "trackContextMenu"
         property int track: -1
         property var headers: []
+        // The menu of one track, opened without a click on its header.
+        function openFor(t) {
+            track = t
+            headers = []
+            popup()
+        }
         function headerFor(t) {
             for (var i = 0; i < headers.length; i++)
                 if (headers[i] !== null && headers[i].track === t)
@@ -127,7 +133,22 @@ Item {
         KeyMenuItem {
             text:qsTr("Caption Style…")
             visible:trackContextMenu.track>=0 && !!backend.tracks[trackContextMenu.track] && backend.tracks[trackContextMenu.track].mix.editKind === "caption"
-            onTriggered:Ui.Commands.trigger("edit.caption-style")
+            onTriggered:captionStyleDialog.openDialog(trackContextMenu.track)
+        }
+        KeyMenuItem {
+            objectName:"captionTrackLanguageItem"
+            // Read afresh as the menu opens: the language set last time.
+            text:qsTr("Language: %1…").arg(trackContextMenu.track>=0 && backend.tracks.length>trackContextMenu.track
+                                            ? backend.captionTrackLanguage(trackContextMenu.track).shown || qsTr("Not set") : "")
+            visible:trackContextMenu.track>=0 && !!backend.tracks[trackContextMenu.track] && backend.tracks[trackContextMenu.track].mix.editKind === "caption"
+            onTriggered:captionLanguageDialog.openFor(trackContextMenu.track, false)
+        }
+        KeyMenuItem {
+            objectName:"captionTrackDuplicateItem"
+            text:qsTr("Duplicate Caption Track as a New Language…")
+            visible:trackContextMenu.track>=0 && !!backend.tracks[trackContextMenu.track] && backend.tracks[trackContextMenu.track].mix.editKind === "caption"
+            enabled:!backend.exporting
+            onTriggered:captionLanguageDialog.openFor(trackContextMenu.track, true)
         }
         KeyMenuItem {
             text:backend.recordingTake?qsTr("Stop recording"):qsTr("Record on this track")

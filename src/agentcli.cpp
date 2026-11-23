@@ -1655,6 +1655,10 @@ private:
         "recorder.stop"};
     // A new job's ID, negative when refused.
     static const QSet<QString> jobs = {"queue.duplicateJob"};
+    // How many captions an edit changes, negative when refused.
+    static const QSet<QString> counts = {
+        "editor.replaceCaptionText", "editor.snapCaptionsToCuts", "editor.extendCaptionsToNext",
+        "editor.closeCaptionGaps", "editor.shiftCaptions"};
     // Void methods whose outcome arrives as a worker reply; a refusal before
     // the worker is asked leaves only a status message.
     static const QSet<QString> replies = {
@@ -1671,6 +1675,11 @@ private:
       taskOutcome(result.toString());
     if (jobs.contains(op) && result.toInt() < 0)
       fail("operation_failed", refusal(op, "was refused."));
+    if (counts.contains(op) && result.toInt() < 0)
+      fail("operation_failed", refusal(op, "was refused."));
+    // The files written, none when refused.
+    if (op == "editor.exportCaptionFiles" && result.toStringList().isEmpty())
+      fail("operation_failed", refusal(op, "wrote no file."));
     if (replies.contains(op) && !m_replies && m_errors.isEmpty())
       fail("operation_failed", refusal(op, "made no change."));
     if ((op == "editor.pasteClipboardSnapshot" || op == "editor.duplicateClips") && result.toInt() > 0 && !m_replies && m_errors.isEmpty())

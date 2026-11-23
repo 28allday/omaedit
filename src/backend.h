@@ -172,6 +172,9 @@ class Backend : public QObject {
     Q_PROPERTY(RenderPresets *renderPresets READ renderPresets CONSTANT)
     Q_PROPERTY(HardwareSettings *hardware READ hardware CONSTANT)
     Q_PROPERTY(int captionCount READ captionCount NOTIFY timelineEntriesChanged)
+    // The timeline's caption settings (rules, speakers) as stored: what the
+    // caption list binds to; captionRules and captionSpeakers read them whole.
+    Q_PROPERTY(QVariantMap captionSettings READ captionSettings NOTIFY captionSettingsChanged)
     Q_PROPERTY(QString defaultRenderDir READ defaultRenderDir CONSTANT)
     Q_PROPERTY(int exportPercent READ exportPercent NOTIFY exportingChanged)
     Q_PROPERTY(QVariantList audioRenderTracks READ audioRenderTracks NOTIFY tracksChanged)
@@ -537,6 +540,95 @@ public:
     // old look take the new one; with everyCaption all of them do. One undo
     // step. False, with the reason in status, for an unknown key or value.
     Q_INVOKABLE bool setCaptionStyle(const QVariantMap &style, bool everyCaption);
+    // Each caption track keeps a style of its own. The fuller look beyond the
+    // keys above: shadow (true/false), shadowColor (#rrggbb or #aarrggbb),
+    // shadowOffset (-50 to 50 pixels) and shadowSoftness (0-50 pixels);
+    // outlineColor (#rrggbb) and outlineWidth (0-20 pixels, 2 = the usual
+    // edge); boxPadding (-1 = automatic, a quarter of the text height, or
+    // 0-200 pixels), boxRadius (0-200 pixels) and boxOpacity (0-100, the
+    // alpha of bg). Pixels are the timeline frame's. trackCaptionStyle gives
+    // every key of one caption track's style (-1: the first caption track's,
+    // as captionStyleSettings); setTrackCaptionStyle sets the keys given on
+    // that track (-1: every caption track, each keeping the rest of its own
+    // style), as setCaptionStyle does. One undo step.
+    Q_INVOKABLE QVariantMap trackCaptionStyle(int track) const;
+    Q_INVOKABLE bool setTrackCaptionStyle(int track, const QVariantMap &style, bool everyCaption);
+    // One caption (a flat connected index). captionLook: every style key as
+    // that caption is drawn, with x and y (its offset from where the style
+    // places it, in parts of the frame, as a title's position), speaker,
+    // track, and ownStyle (true when it keeps a look of its own rather than
+    // following its track's style: marked so, dragged, or drawn otherwise).
+    // setCaptionLook sets the keys given (style keys, x, y); the caption
+    // then keeps its own look. useTrackCaptionStyle(true) puts it back in its
+    // track's style and place; false keeps its look as it is, no longer
+    // changed with the track's. Each one undo step.
+    Q_INVOKABLE QVariantMap captionLook(int connectedIndex) const;
+    // captionLook's ownStyle alone (C++: a query, not a command line operation,
+    // where false would read as a refusal).
+    bool captionOwnStyle(int connectedIndex) const;
+    Q_INVOKABLE bool setCaptionLook(int connectedIndex, const QVariantMap &look);
+    Q_INVOKABLE bool useTrackCaptionStyle(int connectedIndex, bool on);
+    // The speaker of these captions ("" = none; at most 80 letters). One
+    // undo step.
+    Q_INVOKABLE bool setCaptionSpeaker(const QVariantList &connectedIndices, const QString &speaker);
+    // A caption track's language: {code (BCP 47, such as en, fr, pt-BR;
+    // "und" when not set), name, shown ("Not set" when not set)}. It is kept
+    // as the track's mix "language" {code, name}. The name may be left empty
+    // for a code captionLanguages knows. Each one undo step.
+    Q_INVOKABLE QVariantMap captionTrackLanguage(int track) const;
+    Q_INVOKABLE bool setCaptionTrackLanguage(int track, const QString &code, const QString &name);
+    Q_INVOKABLE QVariantList captionLanguages() const;
+    // A new caption track with a copy of every caption on `track` and its
+    // style, in the language given, named "Captions (<language>)" and not
+    // burnt in. One undo step.
+    Q_INVOKABLE bool duplicateCaptionTrack(int track, const QString &code, const QString &name);
+    // ── The caption list (Edit page) ──
+    // Its rows: every caption of the timeline in time order, as
+    // [{index (flat connected), track, start, end (the frame after its
+    // last), frames, seconds, language {code, shown}, speaker, colour, text,
+    // problems [{kind, reason}]}]. `filter` (every key optional): track (a
+    // caption track; -1 every one), language (a code), speaker (a name; ""
+    // the captions with none), search (words in the text, any case),
+    // problems (true: only those with a problem).
+    Q_INVOKABLE QVariantList captionList(const QVariantMap &filter) const;
+    // The caption checks' thresholds, kept with the timeline (Caption Style
+    // ▸ Rules): charsPerSecond (17), lineLetters (42), lines (2),
+    // shortestSeconds (0.83), longestSeconds (7), gapFrames (2: a gap under
+    // this and not none is a problem), noOverlap (true); and twoSpeakers
+    // (false: Generate Captions labels the speakers of a stereo clip's
+    // left and right channels, leftSpeaker and rightSpeaker, with whisper's
+    // --diarize; it needs a microphone per person, each on its own
+    // channel). setCaptionRules sets the keys given. One undo step.
+    Q_INVOKABLE QVariantMap captionRules() const;
+    Q_INVOKABLE bool setCaptionRules(const QVariantMap &rules);
+    // The timeline's speakers, [{name, colour, captions}]: those named in
+    // the list (a colour each) and any a caption has, in a colour its name
+    // gives. setCaptionSpeakerColour adds a speaker or sets its colour
+    // (#rrggbb; "" the next free one); renameCaptionSpeaker renames one in
+    // the list and on every caption ("" takes it off both). One undo step each.
+    Q_INVOKABLE QVariantList captionSpeakers() const;
+    Q_INVOKABLE bool setCaptionSpeakerColour(const QString &speaker, const QString &colour);
+    Q_INVOKABLE bool renameCaptionSpeaker(const QString &speaker, const QString &newName);
+    // The colours a speaker can be given (#rrggbb).
+    Q_INVOKABLE QStringList captionSpeakerColours() const;
+    // A caption's words, typed in the list (lines by \n). One undo step.
+    Q_INVOKABLE bool setCaptionText(int connectedIndex, const QString &text);
+    // Every `find` in these captions' words (none listed: every caption)
+    // replaced; matchCase false finds it in any case. One undo step; the
+    // number of captions changed.
+    Q_INVOKABLE int replaceCaptionText(const QString &find, const QString &replacement,
+                                       const QVariantList &connectedIndices, bool matchCase);
+    // Timing (none listed: every caption; each one undo step; the number of
+    // captions that will move, or -1 when nothing can be done):
+    // snapCaptionsToCuts moves a caption's start or end onto a cut of the
+    // picture at most `frames` away; extendCaptionsToNext makes each last
+    // until the next caption on its track, less the rules' gapFrames;
+    // closeCaptionGaps makes a caption followed by a gap under `frames`
+    // last until the next; shiftCaptions moves them by `frames` (- earlier).
+    Q_INVOKABLE int snapCaptionsToCuts(const QVariantList &connectedIndices, int frames);
+    Q_INVOKABLE int extendCaptionsToNext(const QVariantList &connectedIndices);
+    Q_INVOKABLE int closeCaptionGaps(const QVariantList &connectedIndices, int frames);
+    Q_INVOKABLE int shiftCaptions(const QVariantList &connectedIndices, int frames);
     // Generate Captions again, in place of every caption on the caption
     // tracks (words typed into them are lost; one undo step brings them back).
     Q_INVOKABLE bool regenerateCaptions();
@@ -551,7 +643,24 @@ public:
     Q_INVOKABLE void importCaptionsDialog();
     Q_INVOKABLE void importCaptions(const QUrl &url);
     Q_INVOKABLE void exportCaptionsDialog();
+    // Captions to a file, its format by its name (.srt, .vtt, .itt, .scc):
+    // exportCaptionFiles(url, format, -1).
     Q_INVOKABLE bool exportCaptions(const QUrl &url);
+    // Export Captions…: the formats [{format, name, suffix}] and the caption
+    // tracks that hold captions [{track, name, language: {code, name, shown}, count}].
+    Q_INVOKABLE QVariantList captionFormats() const;
+    Q_INVOKABLE QVariantList captionExportTracks() const;
+    // The Export Captions window's choice, then where to save it.
+    Q_INVOKABLE void chooseCaptionExportFile(const QString &format, int track);
+    // Captions as files in `format` (srt, vtt, itt, scc). `track` -1: every
+    // caption track, a file each beside `url` named by its language
+    // ("film.fr.srt"; just `url` when the one caption track has no language);
+    // a caption track's index: that track's captions, to `url`. The files
+    // written; none, with the reason in the status, when they cannot be.
+    Q_INVOKABLE QStringList exportCaptionFiles(const QUrl &url, const QString &format, int track);
+    // Each caption track's captions, in track order: [{track, code, name,
+    // place, align, cues: [{start, frames, text}]}] (code "" when not set).
+    Q_INVOKABLE QVariantList captionTrackCues() const;
     // Timeline interchange (File ▸ Import Timeline… / Export As ▸ …): OTIO,
     // CMX 3600 EDL, XML timeline (.fcpxml), AAF. Import adds a sequence to this
     // project and brings its media into the library; export writes the
@@ -1334,6 +1443,7 @@ signals:
     void exportingChanged();
     void masterChanged();
     void adrCuesChanged();
+    void captionSettingsChanged();
     void loopChanged();
     void recordingChanged();
     void takeRecorded(const QString &path, int track, int frame);
@@ -1544,10 +1654,17 @@ signals:
     void setBypassRequested(int track, int index, const QString &key, bool on);
     void setClipMarkersRequested(int track, int index, const QVariantList &markers);
     void editClipMarkerRequested(int track, int index, const QVariantMap &marker, bool remove);
-    void importCaptionsRequested(const QVariantList &cues, const QVariantMap &style);
+    void importCaptionsRequested(const QVariantList &cues, const QVariantMap &style, const QVariantMap &language);
     void placeCaptionsRequested(const QVariantList &cues, const QVariantMap &style,
                                 const QVariantList &remove, const QString &label);
-    void captionStyleRequested(const QVariantMap &style, bool everyCaption);
+    void captionStyleRequested(const QVariantMap &styles, bool everyCaption);
+    void restyleCaptionRequested(int index, const QVariantMap &style, const QVariantList &place, const QString &label);
+    void captionSpeakerRequested(const QVariantList &indices, const QString &speaker, const QVariantMap &settings);
+    void captionSettingsRequested(const QVariantMap &settings, const QString &label);
+    void captionTextsRequested(const QVariantList &changes, const QString &label);
+    void retimeCaptionsRequested(const QVariantList &changes, const QString &label);
+    void renameCaptionSpeakerRequested(const QString &from, const QString &to, const QVariantMap &settings);
+    void duplicateCaptionTrackRequested(int track, const QVariantMap &language, const QString &name);
     void splitManyRequested(int track, const QVariantList &positions, const QString &label);
     void editsDetected(int count);
     void detectingEditsChanged();
@@ -1868,7 +1985,34 @@ private:
     void continueCaptionQueue(bool ok);
     QVariantMap captionStyle() const; // the look new captions are made with
     static QVariantMap defaultCaptionStyle();
+    // `track` when it is a caption track (-1: the first caption track), else -1.
+    int captionTrackAt(int track) const;
+    // The caption style keys of `input` checked and set on `style` (the
+    // lengths Generate Captions keeps to only with `lengths`). False with the
+    // reason in *why for an unknown key or a value out of range.
+    bool applyCaptionStyleKeys(QVariantMap &style, const QVariantMap &input, bool lengths, QString *why) const;
+    bool languageFor(const QString &code, const QString &name, QVariantMap *language);
     bool m_regeneratingCaptions = false;
+    // The caption list: settings, rows and timing (backendcaptionlist.cpp).
+    QVariantMap captionSettings() const { return m_captionSettings; }
+    void setupCaptionList();
+    // The captions as the checks take them: [{index, track, start, frames, text}].
+    QVariantList captionRows() const;
+    // The caption settings with `name` among the speakers (a colour of its own).
+    QVariantMap captionSettingsWithSpeaker(const QString &name) const;
+    // The Export page's warnings for the captions' problems.
+    QStringList captionCheckWarnings() const;
+    // The captions named (all when none are; -1 entries dropped), checked to
+    // be captions: false when one is not.
+    bool chosenCaptions(const QVariantList &connectedIndices, QList<int> *out) const;
+    // Sends the new times [{index, start, frames}] as one undo step `label`;
+    // the number that change.
+    int retimeCaptionsTo(const QVariantList &changes, const QString &label, const QString &none);
+    // Clips Generate Captions transcribes with each channel a speaker (paths).
+    QSet<QString> m_twoChannelTranscripts;
+    // Export Captions…'s choice while its file chooser is open.
+    QString m_captionExportFormat = QStringLiteral("srt");
+    int m_captionExportTrack = -1;
     QSet<QString> m_restorePending;
     QVariantList m_markers; // {frame,text,type} mirror of the worker's list
     QVariantList m_tracks;  // header state mirror, see Timeline::tracks()
@@ -2077,6 +2221,7 @@ private:
     // Audio page.
     QVariantMap m_master;
     QVariantList m_adrCues;
+    QVariantMap m_captionSettings; // the worker's Timeline::captionSettings
     SoundLibrary *m_soundLibrary = nullptr;
     Recorder *m_recorder = nullptr;
     bool m_loop = false;

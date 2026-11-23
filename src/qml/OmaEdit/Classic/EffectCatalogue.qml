@@ -174,8 +174,13 @@ QtObject {
     function titleExtras(e) {
         if (e === null || e === undefined)
             return null
-        return { align: e.titleAlign, weight: e.titleWeight, italic: e.titleItalic,
+        const extras = { align: e.titleAlign, weight: e.titleWeight, italic: e.titleItalic,
                  bg: e.titleBg, outline: e.titleOutline, tracking:e.titleTracking, lineSpacing:e.titleLineSpacing, pixelSize:e.titlePixelSize, margin:e.titleMargin, width:e.titleWidth }
+        // The fuller look (shadow, outline colour and width, box padding and
+        // corners) rides along, so new words keep it.
+        const look = e.titleLook || {}
+        Object.keys(look).forEach(function(k) { extras[k] = look[k] })
+        return extras
     }
     // A title's whole look as updateTitle takes it, for new words in the
     // same title. What the title never set is left out: sent as nothing, a

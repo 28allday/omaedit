@@ -217,6 +217,11 @@ Rectangle {
     signal colorEdited(real brightness, real contrast, real saturation)
     signal titleEditRequested()
     signal titleTextEdited(string text)
+    // A caption's own look (style keys, x, y), its speaker, and whether it
+    // follows its caption track's style.
+    signal captionLookEdited(var look)
+    signal captionSpeakerEdited(string speaker)
+    signal captionTrackStyleToggled(bool on)
     signal volumeEdited(real db)
     signal panEdited(real pan)
     signal eqSelected(string preset)
@@ -364,6 +369,11 @@ Rectangle {
                + ":" + pad(total % 60) + ":" + pad(count % nominal)
     }
     readonly property bool isTitle: hasSelection && shownClip.kind === "title"
+    readonly property bool isCaption: isTitle && shownClip.caption === true
+    // The selected caption's whole look (Backend::captionLook), or nothing.
+    readonly property var look: isCaption && shownClip.captionLook ? shownClip.captionLook : ({})
+    function lookNumber(key, fallback) { return look[key] !== undefined && look[key] !== null ? Number(look[key]) : fallback }
+    function hex2(n) { const h = Math.round(Math.max(0, Math.min(255, n))).toString(16); return h.length < 2 ? "0" + h : h }
     readonly property bool isAdjust: hasSelection && shownClip.adjust === true
     readonly property string generator: hasSelection && shownClip.generator !== undefined ? String(shownClip.generator) : ""
     readonly property var solidColors: ["#000000", "#ffffff", "#808080", "#c0392b", "#e67e22", "#f1c40f",
@@ -826,6 +836,224 @@ Rectangle {
                                               ? Theme.accent : Theme.border
                                 TapHandler { onTapped: root.generatorColorSelected(parent.modelData) }
                             }
+                        }
+                    }
+                }
+
+                // A caption first: its own look, place and speaker, and whether
+                // it follows its caption track's style.
+                InspectorSection {
+                    id: captionSection
+                    objectName: "captionSection"
+                    width: parent.width
+                    title: qsTr("Caption")
+                    expanded: true
+                    visible: root.isCaption
+                    modified: root.look.ownStyle === true
+                    onReset: root.captionTrackStyleToggled(true)
+
+                    // A colour typed as a hex code, set when the field is left.
+                    component ColourRow: Item {
+                        id: colourRow
+                        property string label: ""
+                        property string value: ""
+                        property string tip: ""
+                        property bool withAlpha: false
+                        signal colourEdited(string colour)
+                        width: parent ? parent.width : 260
+                        implicitHeight: Theme.hControl + Theme.s1
+                        Text {
+                            text: colourRow.label
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fsLabel
+                            color: Theme.textSecondary
+                        }
+                        Rectangle {
+                            id: swatch
+                            anchors.right: colourField.left
+                            anchors.rightMargin: Theme.s2
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 14; height: 14; radius: 2
+                            color: colourRow.value.length === 9 ? "#" + colourRow.value.substring(3) : (colourRow.value || "transparent")
+                            border.width: Theme.hairline
+                            border.color: Theme.border
+                        }
+                        LineEdit {
+                            id: colourField
+                            objectName: colourRow.objectName + "Field"
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 96
+                            tip: colourRow.tip
+                            text: colourRow.value
+                            validator: RegularExpressionValidator { regularExpression: colourRow.withAlpha ? /#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})/ : /#[0-9a-fA-F]{6}/ }
+                            onEditingFinished: if (acceptableInput && text.toLowerCase() !== colourRow.value) colourRow.colourEdited(text.toLowerCase())
+                        }
+                    }
+
+                    Toggle {
+                        objectName: "inspectorCaptionUsesTrackStyle"
+                        width: parent.width
+                        label: qsTr("Uses the track style")
+                        tip: qsTr("On: the caption follows its caption track's style and place, and changes with it. Turning it on drops the caption's own look; turning it off keeps the caption as it is when the track's style changes.")
+                        checked: root.look.ownStyle !== true
+                        onClicked: root.captionTrackStyleToggled(checked)
+                    }
+                    Item {
+                        width: parent.width
+                        implicitHeight: Theme.hControl + Theme.s1
+                        Text {
+                            text: qsTr("Speaker")
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fsLabel
+                            color: Theme.textSecondary
+                        }
+                        LineEdit {
+                            id: speakerField
+                            objectName: "inspectorCaptionSpeaker"
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Math.max(96, parent.width - 90)
+                            tip: qsTr("Who says this caption's words; leave empty for none")
+                            hint: qsTr("No speaker")
+                            readonly property string stored: root.look.speaker !== undefined ? root.look.speaker : ""
+                            onStoredChanged: text = stored
+                            Component.onCompleted: text = stored
+                            onEditingFinished: if (text.trim() !== stored) root.captionSpeakerEdited(text.trim())
+                        }
+                    }
+                    ComboField {
+                        objectName: "inspectorCaptionAlign"
+                        tip: qsTr("How the caption's lines line up with each other")
+                        width: parent.width
+                        caption: qsTr("Alignment")
+                        model: [qsTr("Left"), qsTr("Centre"), qsTr("Right")]
+                        currentIndex: Math.max(0, ["left", "centre", "right"].indexOf(root.look.align || "centre"))
+                        onActivated: function (i) { root.captionLookEdited({ align: ["left", "centre", "right"][i] }) }
+                    }
+                    PropertyRow {
+                        width: parent.width
+                        objectName: "inspectorCaptionPosition"
+                        label: qsTr("Position")
+                        animatable: false
+                        fields: [{ prefix: "X", value: root.lookNumber("x", 0) * 100, suffix: "%", decimals: 1 },
+                                 { prefix: "Y", value: root.lookNumber("y", 0) * 100, suffix: "%", decimals: 1 }]
+                        onFieldEdited: function (i, v) {
+                            root.captionLookEdited(i === 0 ? { x: Math.max(-1, Math.min(1, v / 100)) }
+                                                           : { y: Math.max(-1, Math.min(1, v / 100)) })
+                        }
+                    }
+                    PropertyRow {
+                        width: parent.width
+                        objectName: "inspectorCaptionSize"
+                        label: qsTr("Text size")
+                        animatable: false
+                        fields: [{ prefix: "", value: root.lookNumber("pixelSize", 0), suffix: " px", decimals: 0 }]
+                        onFieldEdited: function (i, v) { root.captionLookEdited({ pixelSize: Math.max(0, Math.min(2000, Math.round(v))) }) }
+                    }
+                    ColourRow {
+                        objectName: "inspectorCaptionColour"
+                        label: qsTr("Colour")
+                        tip: qsTr("Text colour as a six-digit hex code")
+                        value: root.look.color || "#ffffff"
+                        onColourEdited: function (c) { root.captionLookEdited({ color: c }) }
+                    }
+                    Toggle {
+                        objectName: "inspectorCaptionOutline"
+                        width: parent.width
+                        label: qsTr("Outline")
+                        tip: qsTr("Draw an edge round the letters")
+                        checked: root.look.outline !== false
+                        onClicked: root.captionLookEdited({ outline: checked })
+                    }
+                    ColourRow {
+                        objectName: "inspectorCaptionOutlineColour"
+                        visible: root.look.outline !== false
+                        label: qsTr("Outline colour")
+                        tip: qsTr("Colour of the edge round the letters")
+                        value: root.look.outlineColor || "#000000"
+                        onColourEdited: function (c) { root.captionLookEdited({ outlineColor: c }) }
+                    }
+                    PropertyRow {
+                        width: parent.width
+                        visible: root.look.outline !== false
+                        objectName: "inspectorCaptionOutlineWidth"
+                        label: qsTr("Outline width")
+                        animatable: false
+                        fields: [{ prefix: "", value: root.lookNumber("outlineWidth", 2), suffix: " px", decimals: 1 }]
+                        onFieldEdited: function (i, v) { root.captionLookEdited({ outlineWidth: Math.max(0, Math.min(20, v)) }) }
+                    }
+                    Toggle {
+                        objectName: "inspectorCaptionShadow"
+                        width: parent.width
+                        label: qsTr("Shadow")
+                        tip: qsTr("Draw a soft shadow under the letters")
+                        checked: root.look.shadow === true
+                        onClicked: root.captionLookEdited({ shadow: checked })
+                    }
+                    ColourRow {
+                        objectName: "inspectorCaptionShadowColour"
+                        visible: root.look.shadow === true
+                        withAlpha: true
+                        label: qsTr("Shadow colour")
+                        tip: qsTr("Shadow colour: six hex digits, or eight with its opacity first")
+                        value: root.look.shadowColor || "#000000"
+                        onColourEdited: function (c) { root.captionLookEdited({ shadowColor: c }) }
+                    }
+                    PropertyRow {
+                        width: parent.width
+                        visible: root.look.shadow === true
+                        objectName: "inspectorCaptionShadowShape"
+                        label: qsTr("Shadow")
+                        animatable: false
+                        fields: [{ prefix: qsTr("Offset"), value: root.lookNumber("shadowOffset", 3), suffix: " px", decimals: 0 },
+                                 { prefix: qsTr("Soft"), value: root.lookNumber("shadowSoftness", 4), suffix: " px", decimals: 0 }]
+                        onFieldEdited: function (i, v) {
+                            root.captionLookEdited(i === 0 ? { shadowOffset: Math.max(-50, Math.min(50, Math.round(v))) }
+                                                           : { shadowSoftness: Math.max(0, Math.min(50, Math.round(v))) })
+                        }
+                    }
+                    Toggle {
+                        objectName: "inspectorCaptionBox"
+                        width: parent.width
+                        label: qsTr("Box")
+                        tip: qsTr("Draw a box behind the words")
+                        checked: !!root.look.bg && root.lookNumber("boxOpacity", 0) > 0
+                        onClicked: root.captionLookEdited(checked ? { boxOpacity: root.lookNumber("boxOpacity", 0) > 0 ? root.lookNumber("boxOpacity", 60) : 60 } : { bg: "" })
+                    }
+                    ColourRow {
+                        objectName: "inspectorCaptionBoxColour"
+                        visible: !!root.look.bg
+                        label: qsTr("Box colour")
+                        tip: qsTr("Box colour as a six-digit hex code")
+                        value: root.look.bg && root.look.bg.length === 9 ? "#" + root.look.bg.substring(3) : "#000000"
+                        onColourEdited: function (c) { root.captionLookEdited({ bg: "#" + root.hex2(root.lookNumber("boxOpacity", 100) * 255 / 100) + c.substring(1) }) }
+                    }
+                    PropertyRow {
+                        width: parent.width
+                        visible: !!root.look.bg
+                        objectName: "inspectorCaptionBoxOpacity"
+                        label: qsTr("Box opacity")
+                        animatable: false
+                        fields: [{ prefix: "", value: root.lookNumber("boxOpacity", 0), suffix: "%", decimals: 0 }]
+                        onFieldEdited: function (i, v) { root.captionLookEdited({ boxOpacity: Math.max(0, Math.min(100, Math.round(v))) }) }
+                    }
+                    PropertyRow {
+                        width: parent.width
+                        visible: !!root.look.bg
+                        objectName: "inspectorCaptionBoxShape"
+                        label: qsTr("Box")
+                        animatable: false
+                        // Padding below 0 is automatic: a quarter of the text height.
+                        fields: [{ prefix: qsTr("Pad"), value: root.lookNumber("boxPadding", -1), suffix: " px", decimals: 0 },
+                                 { prefix: qsTr("Corners"), value: root.lookNumber("boxRadius", 0), suffix: " px", decimals: 0 }]
+                        onFieldEdited: function (i, v) {
+                            root.captionLookEdited(i === 0 ? { boxPadding: v < 0 ? -1 : Math.min(200, Math.round(v)) }
+                                                           : { boxRadius: Math.max(0, Math.min(200, Math.round(v))) })
                         }
                     }
                 }

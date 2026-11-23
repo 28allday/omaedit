@@ -54,7 +54,7 @@ Edit.InspectorPanel {
         rectX: entry.rectX, rectY: entry.rectY, rectW: entry.rectW, rectH: entry.rectH,
         colorB: entry.colorB, colorC: entry.colorC, colorS: entry.colorS,
         fadeIn: entry.fadeIn, fadeOut: entry.fadeOut, mixOut: entry.mixOut, mixAlign: entry.mixAlign, mixStyle: entry.mixStyle,
-        disabled: entry.disabled, title: entry.title,
+        disabled: entry.disabled, title: entry.title, caption: entry.caption === true, captionLook: captionLook,
         titleSize: entry.titleSize, titleAlign: entry.titleAlign, titleWeight: entry.titleWeight,
         titleItalic: entry.titleItalic, titleBg: entry.titleBg, titleOutline: entry.titleOutline,
         rotation: entry.rotation,
@@ -73,6 +73,10 @@ Edit.InspectorPanel {
         sourceWidth: media ? media.width || 0 : 0, sourceHeight: media ? media.height || 0 : 0,
         frameWidth: backend.videoWidth, frameHeight: backend.videoHeight
     }
+    // The selected caption's whole look, read again whenever the clips or the
+    // tracks (its track's style) change.
+    readonly property var captionLook: trackSelected && entry !== null && entry.caption === true && backend.tracks.length > 0
+                                       ? backend.captionLook(win.selectedConnectedIndex) : null
     // The clip's media in the library: its picture size decides whether
     // Scaling is offered.
     readonly property var media: {
@@ -392,6 +396,9 @@ Edit.InspectorPanel {
         if (!trackSelected || !entry) return
         backend.updateTitle(win.selectedConnectedIndex, text, win.catalogue.titleStyle(entry))
     }
+    onCaptionLookEdited: function (look) { if (trackSelected && entry) backend.setCaptionLook(win.selectedConnectedIndex, look) }
+    onCaptionSpeakerEdited: function (speaker) { if (trackSelected && entry) backend.setCaptionSpeaker([win.selectedConnectedIndex], speaker) }
+    onCaptionTrackStyleToggled: function (on) { if (trackSelected && entry) backend.useTrackCaptionStyle(win.selectedConnectedIndex, on) }
     onTitleEditRequested: if (trackSelected && entry)
         titleDialog.openFor(win.selectedConnectedIndex, entry.title, entry.titlePlace,
                             entry.titleSize, entry.titleFont, entry.titleColor,

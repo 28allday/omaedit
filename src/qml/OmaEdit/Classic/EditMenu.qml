@@ -100,6 +100,45 @@ AppMenu {
             onTriggered: Ui.Commands.trigger(commandId)
         }
         MenuSeparator {}
+        AppMenu {
+            title: qsTr("Timing")
+            KeyMenuItem {
+                text: qsTr("Snap Edges to Cuts…")
+                commandId: "edit.caption-snap"
+                kbd: Ui.Commands.hint(commandId)
+                enabled: !registeredCommand || registeredCommand.available
+                onTriggered: Ui.Commands.trigger(commandId)
+            }
+            KeyMenuItem {
+                text: qsTr("Extend to the Next Caption")
+                commandId: "edit.caption-extend"
+                kbd: Ui.Commands.hint(commandId)
+                enabled: !registeredCommand || registeredCommand.available
+                onTriggered: Ui.Commands.trigger(commandId)
+            }
+            KeyMenuItem {
+                text: qsTr("Close Small Gaps…")
+                commandId: "edit.caption-close-gaps"
+                kbd: Ui.Commands.hint(commandId)
+                enabled: !registeredCommand || registeredCommand.available
+                onTriggered: Ui.Commands.trigger(commandId)
+            }
+            KeyMenuItem {
+                text: qsTr("Shift Captions…")
+                commandId: "edit.caption-shift"
+                kbd: Ui.Commands.hint(commandId)
+                enabled: !registeredCommand || registeredCommand.available
+                onTriggered: Ui.Commands.trigger(commandId)
+            }
+        }
+        KeyMenuItem {
+            text: qsTr("Speakers…")
+            commandId: "edit.caption-speakers"
+            kbd: Ui.Commands.hint(commandId)
+            enabled: !registeredCommand || registeredCommand.available
+            onTriggered: Ui.Commands.trigger(commandId)
+        }
+        MenuSeparator {}
         KeyMenuItem {
             text: qsTr("Caption Style…")
             commandId: "edit.caption-style"

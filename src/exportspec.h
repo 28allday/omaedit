@@ -41,11 +41,15 @@
 //   acodec      aac | opus | mp3 | pcm16 | pcm24 | flac | vorbis
 //   arate       int Hz, abitrate int kbps, channels 1 | 2 | 6
 //   subtitles   none | burn | embed | sidecar
+//   sidecarFormat srt | vtt | itt | scc — the sidecar files' format (srt)
 //   metadata    {title, artist, album, comment, copyright, description, date}
 //   rangeIn/rangeOut  absolute timeline frames, −1 = whole timeline
 //   handles     int frames either side (per-clip jobs)
 //   captionTrack int — the timeline track that carries captions (−1 none)
 //   captionCues  [{start, frames, text}] for embed / sidecar
+//   captionTracks [{track, code, name, place, align, cues}]: each caption
+//               track's cues and language, embedded as a stream of its own
+//               or written to a sidecar of its own (absent: captionCues, as one)
 namespace ExportSpec {
 
 QVariantMap normalized(const QVariantMap &spec);
@@ -67,6 +71,13 @@ QString convertedRate(const QVariantMap &spec, double timelineFps);
 // The mezzanine keeps 16 bits per channel (10-bit, HDR, ProRes and APV).
 bool preciseMezzanine(const QVariantMap &spec);
 bool embedsSubtitles(const QVariantMap &spec);
+// The caption tracks a delivery carries: captionTracks, or captionCues as one
+// track with no language. Tracks with no cues are left out.
+QVariantList captionTracksOf(const QVariantMap &spec);
+// Each caption track's sidecar beside `path`, in the spec's sidecar format:
+// "film.srt" for one caption track with no language, else named by each
+// language ("film.en.srt", "film.fr.srt").
+QStringList sidecarPaths(const QString &path, const QVariantMap &spec);
 
 // What the encoder and muxer are given for a spec (the editor's own sink). Names
 // are FFmpeg's (encoders, pixel formats, AVOptions, colour tags).
@@ -186,6 +197,12 @@ QString apvProfile(const QVariantMap &spec);
 // Remux `input` with the subtitle file into `output`, stream-copied.
 QStringList ffmpegMuxSubtitleArgs(const QVariantMap &spec, const QString &input,
                                   const QString &subtitles, const QString &output);
+// One caption stream: its SubRip file, its language as the container tags it
+// (ISO 639-2), and its title ("" none).
+struct SubtitleStream { QString file, language, title; };
+// …with a stream for each file, in order, each with its language and title.
+QStringList ffmpegMuxSubtitleArgs(const QVariantMap &spec, const QString &input,
+                                  const QList<SubtitleStream> &streams, const QString &output);
 // Join stream-copied segments of one render (pause / resume). With `audio`,
 // the segments give the picture and that file, rendered in one pass, the sound.
 QStringList ffmpegConcatArgs(const QString &listFile, const QString &output,

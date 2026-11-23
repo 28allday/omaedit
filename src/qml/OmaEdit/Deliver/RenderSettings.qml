@@ -116,7 +116,12 @@ Rectangle {
     readonly property var channelOptions: [{ n: 1, label: qsTr("Mono") }, { n: 2, label: qsTr("Stereo") }].concat(acodec === "mp3" ? [] : [{ n: 6, label: qsTr("5.1 Surround") }])
     readonly property var subtitleOptions: [
         { key: "none", label: qsTr("None") }, { key: "burn", label: qsTr("Burn in") },
-        { key: "embed", label: qsTr("Embed as a track") }, { key: "sidecar", label: qsTr("Sidecar .srt file") }
+        { key: "embed", label: qsTr("Embed as a track") }, { key: "sidecar", label: qsTr("Sidecar files") }
+    ]
+    // The sidecar files' format: a file for each caption track, named by its language.
+    readonly property var sidecarFormats: [
+        { key: "srt", label: qsTr("SubRip (.srt)") }, { key: "vtt", label: qsTr("WebVTT (.vtt)") },
+        { key: "itt", label: qsTr("iTT, timed text for video stores (.itt)") }, { key: "scc", label: qsTr("SCC, broadcast captions (.scc)") }
     ]
     // The ways of encoding found on this machine, not a fixed list of
     // makers: one that did not open here is left out, unless the settings
@@ -554,7 +559,7 @@ Rectangle {
                     spacing: Theme.s1
                     ComboField {
                         objectName: "setting:subtitles"
-                        tip: qsTr("What happens to timeline captions: burnt into the picture, embedded as a track, or a sidecar .srt")
+                        tip: qsTr("What happens to timeline captions: burnt into the picture, embedded as a track for each caption track with its language, or written beside the video as a file for each caption track")
                         width: parent.width - subInfo.width - parent.spacing
                         model: root.subtitleOptions.map(function (s) { return s.label })
                         currentIndex: root.indexOfKey(root.subtitleOptions, root.v("subtitles", "none"))
@@ -578,6 +583,20 @@ Rectangle {
                         HoverHandler { id: subHover }
                         Tooltip { visible: subHover.hovered; text: root.hasCaptions ? qsTr("%1 caption cues on the timeline").arg(root.captionCount) : qsTr("No captions on the timeline (File ▸ Import Captions…)") }
                     }
+                }
+            }
+            SettingRow {
+                label: qsTr("Caption files")
+                width: form.w
+                visible: root.video && !root.sequenceContainer && root.v("subtitles", "none") === "sidecar"
+                height: visible ? implicitHeight : 0
+                ComboField {
+                    objectName: "setting:sidecarFormat"
+                    tip: qsTr("The format of the caption files written beside the video: one for each caption track, named by its language, such as Film.fr.srt")
+                    width: parent.width
+                    model: root.sidecarFormats.map(function (f) { return f.label })
+                    currentIndex: root.indexOfKey(root.sidecarFormats, root.v("sidecarFormat", "srt"))
+                    onActivated: function (i) { root.specEdited("sidecarFormat", root.sidecarFormats[i].key) }
                 }
             }
             SettingRow {

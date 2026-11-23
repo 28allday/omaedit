@@ -57,6 +57,14 @@ AppMenu {
             onTriggered: Ui.Commands.trigger(commandId)
             commandId: "view.inspector"
         }
+
+        KeyMenuItem {
+            text: classicLayout.captionListShown ? qsTr("Hide Caption List") : qsTr("Show Caption List")
+            kbd: Ui.Commands.hint(commandId)
+            enabled: !registeredCommand || registeredCommand.available
+            onTriggered: Ui.Commands.trigger(commandId)
+            commandId: "view.caption-list"
+        }
     }
 
     AppMenu {

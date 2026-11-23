@@ -21,7 +21,8 @@
     X(optional, titlePlace) X(optional, titleSize) X(optional, titleFont) X(optional, titleColor) \
     X(optional, titleAlign) X(optional, titleWeight) X(optional, titleBg) X(optional, titleItalic) \
     X(optional, titleOutline) X(optional, caption) X(optional, titleTracking) X(optional, titleLineSpacing) \
-    X(optional, titlePixelSize) X(optional, titleMargin) X(optional, titleWidth) X(plain, volume) X(plain, pan) X(plain, volumeKf) \
+    X(optional, titlePixelSize) X(optional, titleMargin) X(optional, titleWidth) X(optional, titleLook) \
+    X(optional, speaker) X(flag, ownStyle) X(plain, volume) X(plain, pan) X(plain, volumeKf) \
     X(plain, eq) X(plain, fadeIn) X(plain, fadeOut) X(optional, audioCurve) \
     X(optional, audioMap) X(flag, normalize) X(plain, opacity) X(plain, opacityKf) \
     X(plain, rectX) X(plain, rectY) X(plain, rectW) X(plain, rectH) \
@@ -95,6 +96,13 @@ struct ClipEntry {
     std::optional<QString> title, titlePlace, titleSize, titleFont, titleColor, titleAlign, titleWeight, titleBg;
     std::optional<bool> titleItalic, titleOutline, caption;
     std::optional<QVariant> titleTracking, titleLineSpacing, titlePixelSize, titleMargin, titleWidth;
+    // The fuller look (EditEngine::titleLookKeys: shadow, outline colour and
+    // width, box padding and corners); absent = the look titles always had.
+    std::optional<QVariantMap> titleLook;
+    // A caption's speaker ("" or absent = none), and whether it keeps a look
+    // of its own rather than its caption track's style.
+    std::optional<QString> speaker;
+    bool ownStyle = false;
 
     // Sound.
     double volume = 0, pan = 0;

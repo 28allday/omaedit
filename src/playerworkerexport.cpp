@@ -1,4 +1,5 @@
 #include "playerworker_p.h"
+#include "captionformats.h"
 #include "sink.h"
 
 // ── Export (the Deliver page's render job) ───────────────────────────────
@@ -775,10 +776,8 @@ void PlayerWorker::afterRenderStage(const QString &part) {
     muxOrFinish(part);
 }
 
-// Caption cues clipped to the render range, timed from its start.
-QVariantList PlayerWorker::exportCues() const {
+QVariantList PlayerWorker::exportCues(const QVariantList &all) const {
     QVariantList cues;
-    const QVariantList all = m_exportSpec.value(QStringLiteral("captionCues")).toList();
     for (const QVariant &v : all) {
         QVariantMap c = v.toMap();
         int start = c.value(QStringLiteral("start")).toInt();
@@ -796,49 +795,87 @@ QVariantList PlayerWorker::exportCues() const {
 
 void PlayerWorker::muxOrFinish(const QString &part) {
     const QString subs = m_exportSpec.value(QStringLiteral("subtitles")).toString();
-    const QVariantList cues = exportCues();
     const QString container = m_exportSpec.value(QStringLiteral("container")).toString();
     const bool canEmbed = m_exportSpec.value(QStringLiteral("video")).toBool()
                           && (container == QStringLiteral("mp4") || container == QStringLiteral("mov")
                               || container == QStringLiteral("mkv") || container == QStringLiteral("webm"));
     const double fps = m_exportFps > 0.0 ? m_exportFps : 25.0;
-    if (subs == QStringLiteral("embed") && !cues.isEmpty() && canEmbed) {
-        const QString srt = m_exportWorkingPath + QStringLiteral(".captions.srt");
-        QFile f(srt);
-        if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            endExport(false, QStringLiteral("Could not write the caption file"));
-            return;
+    // Every caption track with cues in the range: a stream or a file of its own.
+    struct Track { QVariantMap info; QVariantList cues; };
+    QList<Track> tracks;
+    QStringList languages;
+    for (const QVariant &v : ExportSpec::captionTracksOf(m_exportSpec)) {
+        const QVariantMap info = v.toMap();
+        const QVariantList cues = exportCues(info.value(QStringLiteral("cues")).toList());
+        if (cues.isEmpty()) continue;
+        tracks.append({info, cues});
+        languages.append(info.value(QStringLiteral("code")).toString());
+    }
+    if (subs == QStringLiteral("embed") && !tracks.isEmpty() && canEmbed) {
+        QList<ExportSpec::SubtitleStream> streams;
+        QStringList files;
+        // One track with no language is tagged English, as before languages.
+        const bool alone = tracks.size() == 1;
+        for (int i = 0; i < tracks.size(); ++i) {
+            const QString srt = m_exportWorkingPath + QStringLiteral(".captions-%1.srt").arg(i);
+            files.append(srt);
+            QFile f(srt);
+            const QByteArray text = Timeline::formatSrt(tracks.at(i).cues, fps).toUtf8();
+            if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate) || f.write(text) != text.size() || !f.flush()) {
+                f.close();
+                for (const QString &written : std::as_const(files)) QFile::remove(written);
+                endExport(false, QStringLiteral("Could not write the caption file"));
+                return;
+            }
+            f.close();
+            const QVariantMap &info = tracks.at(i).info;
+            const QString code = info.value(QStringLiteral("code")).toString();
+            streams.append({srt, CaptionFormats::streamLanguage(code, container, alone ? QStringLiteral("eng") : QStringLiteral("und")),
+                            info.value(QStringLiteral("name")).toString()});
         }
-        f.write(Timeline::formatSrt(cues, fps).toUtf8());
-        f.close();
         const QString muxed = m_exportWorkingPath + QStringLiteral(".mux.part");
         m_exportStage = ExportStage::Mux;
         emit exportStageChanged(QStringLiteral("captions"));
-        runExportProcess(ExportSpec::ffmpegMuxSubtitleArgs(m_exportSpec, part, srt, muxed), m_exportFrames / fps,
-                         [this, part, srt, muxed] {
-            QFile::remove(srt);
+        runExportProcess(ExportSpec::ffmpegMuxSubtitleArgs(m_exportSpec, part, streams, muxed), m_exportFrames / fps,
+                         [this, part, files, muxed] {
+            for (const QString &f : files) QFile::remove(f);
             QFile::remove(part);
             finishDelivery(muxed);
         });
         return;
     }
-    if ((subs == QStringLiteral("sidecar") || (subs == QStringLiteral("embed") && !canEmbed)) && !cues.isEmpty()) {
-        const QString srt = QFileInfo(m_exportPath).path() + QLatin1Char('/')
-                            + QFileInfo(m_exportPath).completeBaseName() + QStringLiteral(".srt");
-        // Written now, published after the main file (so a refused delivery
-        // leaves the existing .srt alone), readable like any other output.
-        const QString pending = QFileInfo(srt).absolutePath() + QStringLiteral("/.omaedit-caption-")
-                                + QUuid::createUuid().toString(QUuid::WithoutBraces) + QStringLiteral(".srt");
-        QFile f(pending);
-        const auto text = Timeline::formatSrt(cues, fps).toUtf8();
-        if (!f.open(QIODevice::WriteOnly | QIODevice::NewOnly) || f.write(text) != text.size() || !f.flush()) {
-            f.close(); QFile::remove(pending);
-            endExport(false, QStringLiteral("Could not write subtitle sidecar: %1").arg(srt)); return;
+    if ((subs == QStringLiteral("sidecar") || (subs == QStringLiteral("embed") && !canEmbed)) && !tracks.isEmpty()) {
+        QString format = m_exportSpec.value(QStringLiteral("sidecarFormat")).toString();
+        if (!CaptionFormats::formats().contains(format)) format = QStringLiteral("srt");
+        const QFileInfo target(m_exportPath);
+        const QStringList paths = CaptionFormats::trackPaths(target.dir().filePath(target.completeBaseName()), languages, format);
+        // An SCC file's timecode is the delivered file's: the programme's from the range's first frame.
+        const qint64 programmeStart = m_exportContext.value(QStringLiteral("project")).toMap().value(QStringLiteral("startFrame")).toLongLong()
+                                      + m_exportRangeIn;
+        for (int i = 0; i < tracks.size(); ++i) {
+            const QVariantMap &info = tracks.at(i).info;
+            CaptionFormats::WriteOptions options;
+            options.language = info.value(QStringLiteral("code")).toString();
+            options.place = info.value(QStringLiteral("place"), QStringLiteral("bottom")).toString();
+            options.align = info.value(QStringLiteral("align"), QStringLiteral("centre")).toString();
+            options.timecodeStart = programmeStart;
+            QString why, late;
+            const QByteArray text = CaptionFormats::write(format, tracks.at(i).cues, fps, options, &why, &late);
+            if (!why.isEmpty()) { endExport(false, why); return; }
+            if (!late.isEmpty()) appendExportLog(late);
+            // Written now, published after the main file (so a refused delivery
+            // leaves the existing file alone), readable like any other output.
+            const QString pending = QFileInfo(paths.at(i)).absolutePath() + QStringLiteral("/.omaedit-caption-")
+                                    + QUuid::createUuid().toString(QUuid::WithoutBraces) + CaptionFormats::extension(format);
+            QFile f(pending);
+            if (!f.open(QIODevice::WriteOnly | QIODevice::NewOnly) || f.write(text) != text.size() || !f.flush()) {
+                f.close(); QFile::remove(pending);
+                endExport(false, QStringLiteral("Could not write subtitle sidecar: %1").arg(paths.at(i))); return;
+            }
+            f.close();
+            QFile::setPermissions(pending, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ReadGroup | QFileDevice::ReadOther);
+            m_exportSidecars.append({pending, paths.at(i)});
         }
-        f.close();
-        QFile::setPermissions(pending, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ReadGroup | QFileDevice::ReadOther);
-        m_exportSidecarPending = pending;
-        m_exportSidecarTarget = srt;
     }
     finishDelivery(part);
 }
@@ -894,21 +931,21 @@ void PlayerWorker::finishDelivery(const QString &part) {
         endExport(false, error);
         return;
     }
-    if (!m_exportSidecarPending.isEmpty()) {
-        const QString pending = std::exchange(m_exportSidecarPending, QString());
-        if (!ExportSpec::publishOutput(pending, m_exportSidecarTarget, m_exportSpec, &error)) {
+    while (!m_exportSidecars.isEmpty()) {
+        const auto [pending, target] = m_exportSidecars.takeFirst();
+        if (!ExportSpec::publishOutput(pending, target, m_exportSpec, &error)) {
             QFile::remove(pending);
-            endExport(false, QStringLiteral("Could not write subtitle sidecar: %1").arg(m_exportSidecarTarget));
+            endExport(false, QStringLiteral("Could not write subtitle sidecar: %1").arg(target));
             return;
         }
-        appendExportLog(QStringLiteral("Captions written to %1").arg(m_exportSidecarTarget));
+        appendExportLog(QStringLiteral("Captions written to %1").arg(target));
     }
     endExport(true, QString());
 }
 
 void PlayerWorker::endExport(bool ok, const QString &reason) {
-    if (!m_exportSidecarPending.isEmpty()) // a delivery that never published
-        QFile::remove(std::exchange(m_exportSidecarPending, QString()));
+    for (const auto &sidecar : std::exchange(m_exportSidecars, {})) // a delivery that never published
+        QFile::remove(sidecar.first);
     const bool fallback=!ok && !m_exportCancelled && m_exportSpec.value("softwareFallback",true).toBool()
         && (!m_exportRenderRequest || m_exportRenderRequest->error().isEmpty()) && !m_exportRenderFailed
         && m_exportSpec.value("hw").toString()!="software"

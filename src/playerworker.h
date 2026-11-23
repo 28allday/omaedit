@@ -277,18 +277,48 @@ public slots:
     void nestSequenceOnTrack(int index, int track, int position, bool audioHint);
     // Captions: every cue [{start, frames, text}] lands as a caption-tagged
     // title on the track named "Captions" (made if absent), one undo step.
-    void importCaptions(const QVariantList &cues, const QVariantMap &style);
+    // With a `language` {code, name, trackName} (the file's): on the caption
+    // track of that language, or a new one with it, named trackName.
+    void importCaptions(const QVariantList &cues, const QVariantMap &style, const QVariantMap &language = {});
     // Captions onto caption tracks ("Captions", "Captions 2", …), each on the
     // first one with room; `remove` (flat connected indices) go first. One
     // undo step named `label`.
     void placeCaptions(const QVariantList &cues, const QVariantMap &style,
-                       const QVariantList &remove, const QString &label);
+                       const QVariantList &remove, const QString &label, const QVariantMap &language = {});
     // Edit ▸ Captions ▸ Caption Style: `style` becomes the look of the
     // timeline's captions, kept on every caption track (a "Captions" track is
     // made if there is none). The captions that follow the old look (and have
     // not been dragged) take the new one; with everyCaption, all of them do,
     // dragged ones put back in place. One undo step.
-    void restyleCaptions(const QVariantMap &style, bool everyCaption);
+    // `styles`: the new style of each caption track restyled, by its index
+    // as text ("-1": a "Captions" track made for it when there is none).
+    void restyleCaptions(const QVariantMap &styles, bool everyCaption);
+    // One caption: its whole look (`style`, as connectTitleAt takes it) and,
+    // when `place` is [x, y], its offset from where the style sets it
+    // ([x, y, w, h]: its size as well). One undo step named `label`.
+    void restyleCaption(int index, const QVariantMap &style, const QVariantList &place, const QString &label);
+    // The speaker of the captions at these flat connected indices ("" =
+    // none), with `settings` the timeline's caption settings after (a name
+    // added to its speakers; empty: left as they are). One undo step.
+    void setCaptionSpeaker(const QVariantList &indices, const QString &speaker, const QVariantMap &settings);
+    // The caption list (Edit page). `settings` becomes the timeline's
+    // caption settings (Timeline::captionSettings). One undo step `label`.
+    void setCaptionSettings(const QVariantMap &settings, const QString &label);
+    // New words for captions, [{index, text}] by flat connected index; a
+    // caption keeps its look and speaker. One undo step `label`.
+    void setCaptionTexts(const QVariantList &changes, const QString &label);
+    // New times for captions, [{index, start, frames}], each on its own
+    // track. A caption never covers or passes another: one with something
+    // in its way stays where it was. One undo step `label`; captionsRetimed
+    // says how many moved and how many stayed.
+    void retimeCaptions(const QVariantList &changes, const QString &label);
+    // Every caption whose speaker is `from` gets `to` ("" = none), and
+    // `settings` become the caption settings (the speakers renamed). One undo step.
+    void renameCaptionSpeaker(const QString &from, const QString &to, const QVariantMap &settings);
+    // A new caption track holding a copy of every caption of `track` and its
+    // style, in `language` {code, name}, named `name`, not burnt in. One
+    // undo step.
+    void duplicateCaptionTrack(int track, const QVariantMap &language, const QString &name);
     // Looks: blend mode, lens correction (edits, undoable).
     void setMixAlign(int track, int index, const QString &align); // dissolve alignment, undoable
     // A transition across the cut between clip `index` of `track` and the
@@ -592,6 +622,7 @@ signals:
     void sequenceOpenFailed(const QString &name); // its media is missing; stayed on the previous one
     void captionsImported(int placed, int tracks);
     void captionsRestyled(int changed, int kept);
+    void captionTrackDuplicated(int track, int captions);
     void previewOpened(bool ok, const QString &path, int duration, double fps);
     void previewFrameReady(const QImage &image, int position);
     void skimFrameReady(const QImage &image, int frame);
@@ -644,6 +675,9 @@ signals:
     // locked (some sequence holds clips).
     void projectSettingsChanged(const QVariantMap &settings, bool rateLocked);
     void adrCuesChanged(const QVariantList &cues);
+    void captionSettingsChanged(const QVariantMap &settings);
+    void captionTextsChanged(int changed);
+    void captionsRetimed(int moved, int kept);
     void stopped(); // ran off either end of the timeline
     void playbackSpeedChanged(double speed, quint64 request);
     void renderSnapshotReady(int jobId, const QVariantMap &snapshot);
@@ -1124,9 +1158,9 @@ private:
     // Only this render owns the files inside this unique sibling directory.
     std::unique_ptr<QTemporaryDir> m_exportDirectory;
     QString m_exportWorkingPath;
-    // A finished sidecar .srt (written beside its target, hidden) and where it
-    // goes: published only after the main output is.
-    QString m_exportSidecarPending, m_exportSidecarTarget;
+    // Each finished caption sidecar (written beside its target, hidden) and
+    // where it goes: published only after the main output is.
+    QList<QPair<QString, QString>> m_exportSidecars;
     int m_exportFrames = 0;     // frames the render stage must produce
     int m_exportRangeIn = 0, m_exportRangeOut = -1;
     int m_exportCheckpoint = 0; // frames already in segments
@@ -1197,7 +1231,8 @@ private:
     QString exportStageTarget() const;
     int exportStageStart() const;
     void joinExportSegments();
-    QVariantList exportCues() const;
+    // Caption cues clipped to the render range, timed from its start.
+    QVariantList exportCues(const QVariantList &all) const;
 
     // The device: fed by the pump itself (feedSink), or, when m_fed is set,
     // by a thread of its own from a ring the pump only appends to.

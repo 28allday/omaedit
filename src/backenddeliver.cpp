@@ -120,6 +120,7 @@ int Backend::enqueueRender(const QString &name, const QString &path, const QVari
     QVariantMap spec = m_hardware->resolvedSpec(ExportSpec::normalized(plainVariant(specIn).toMap()));
     spec.insert(QStringLiteral("captionTrack"), captionTrackIndex());
     spec.insert(QStringLiteral("captionCues"), captionCuesForRender());
+    spec.insert(QStringLiteral("captionTracks"), captionTrackCues());
     QString error;const auto jobs=ExportSpec::jobs(name,path,spec,m_duration,m_fps,audioRenderTracks(),&error,audioCategoriesInUse());
     if(!error.isEmpty()){setStatus(error);return -1;}
     QStringList approved;
@@ -220,6 +221,7 @@ QStringList Backend::missingServices() const {
 QVariantMap Backend::renderContext(const QVariantMap &specIn, const QString &path) const {
     QVariantMap spec = m_hardware->resolvedSpec(ExportSpec::normalized(plainVariant(specIn).toMap()));
     spec["captionCues"] = captionCuesForRender();
+    spec["captionTracks"] = captionTrackCues();
     QVariantMap ctx;
     ctx.insert(QStringLiteral("path"), path);
     ctx.insert(QStringLiteral("reframing"), reframing());
@@ -242,12 +244,15 @@ QVariantMap Backend::renderContext(const QVariantMap &specIn, const QString &pat
     const RenderTimelineChecks &timeline = renderTimelineChecks();
     ctx.insert(QStringLiteral("hasAudio"), timeline.hasAudio);
     ctx.insert(QStringLiteral("hasCaptions"), !captionCues().isEmpty());
+    ctx.insert(QStringLiteral("captionTracks"), spec.value(QStringLiteral("captionTracks")));
     // (Files come and go whatever the timeline does: looked at every time.)
     QStringList missing = timeline.clipProblems;
     for (const auto &[file, name, flagged] : timeline.media)
         if (flagged || !QFileInfo::exists(file)) missing << name;
     ctx.insert(QStringLiteral("missingMedia"), missing);
     ctx.insert(QStringLiteral("missingServices"), timeline.missingServices);
+    // The caption checks' findings, said when captions are delivered.
+    ctx.insert(QStringLiteral("captionChecks"), captionCheckWarnings());
     if (spec.value(QStringLiteral("video")).toBool())
         ctx.insert(QStringLiteral("eightBitEffects"), timeline.eightBitEffects);
     ctx["managedOutput"] = timeline.managedOutput;

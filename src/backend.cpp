@@ -133,7 +133,7 @@ void Backend::wireFileChooser() {
             importCaptions(url);
             return;
         case ChooserMode::ExportCaptions:
-            exportCaptions(url);
+            exportCaptionFiles(url, m_captionExportFormat, m_captionExportTrack);
             return;
         case ChooserMode::ImportTimeline:
             importTimeline(url);
@@ -483,7 +483,10 @@ void Backend::wireTimelines() {
     connect(this, &Backend::setClipMarkersRequested, m_worker, &PlayerWorker::setClipMarkers);
     connect(this, &Backend::editClipMarkerRequested, m_worker, &PlayerWorker::editClipMarker);
     connect(this, &Backend::importCaptionsRequested, m_worker, &PlayerWorker::importCaptions);
-    connect(this, &Backend::placeCaptionsRequested, m_worker, &PlayerWorker::placeCaptions);
+    connect(this, &Backend::placeCaptionsRequested, m_worker,
+            [worker = m_worker](const QVariantList &cues, const QVariantMap &style, const QVariantList &remove, const QString &label) {
+        worker->placeCaptions(cues, style, remove, label);
+    });
     connect(this, &Backend::splitManyRequested, m_worker, &PlayerWorker::splitMany);
     connect(this, &Backend::setMixAlignRequested, m_worker, &PlayerWorker::setMixAlign);
     connect(this, &Backend::sequenceCreateRequested, m_worker, &PlayerWorker::createSequence);
@@ -555,6 +558,13 @@ void Backend::wireTimelines() {
                                           : tr("the Captions track")));
     });
     connect(this, &Backend::captionStyleRequested, m_worker, &PlayerWorker::restyleCaptions);
+    connect(this, &Backend::restyleCaptionRequested, m_worker, &PlayerWorker::restyleCaption);
+    connect(this, &Backend::captionSpeakerRequested, m_worker, &PlayerWorker::setCaptionSpeaker);
+    setupCaptionList();
+    connect(this, &Backend::duplicateCaptionTrackRequested, m_worker, &PlayerWorker::duplicateCaptionTrack);
+    connect(m_worker, &PlayerWorker::captionTrackDuplicated, this, [this](int, int captions) {
+        setStatus(tr("Caption track duplicated: %n caption(s) copied", nullptr, captions));
+    });
     connect(m_worker, &PlayerWorker::captionsRestyled, this, [this](int changed, int kept) {
         setStatus(kept ? tr("Caption style set: %n caption(s) restyled, %1 kept their own look", nullptr, changed).arg(kept)
                        : tr("Caption style set: %n caption(s) restyled", nullptr, changed));

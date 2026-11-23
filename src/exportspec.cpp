@@ -19,6 +19,8 @@
 #include <QtMath>
 
 
+#include "captionformats.h"
+
 #include <cstdarg>
 #include <cstdio>
 #include <utility>
@@ -36,11 +38,32 @@ QStringList outputPaths(const QString &path, const QVariantMap &spec) {
     const auto mode = spec.value("subtitles").toString();
     const bool embed = spec.value("video", true).toBool() &&
         QStringList{"mp4", "mov", "mkv", "webm"}.contains(spec.value("container", "mp4").toString());
-    if (!spec.value("captionCues").toList().isEmpty() && (mode == "sidecar" || (mode == "embed" && !embed))) {
-        const QFileInfo file(path);
-        result.append(file.dir().filePath(file.completeBaseName() + ".srt"));
-    }
+    if (mode == "sidecar" || (mode == "embed" && !embed))
+        result.append(sidecarPaths(path, spec));
     return result;
+}
+
+QVariantList captionTracksOf(const QVariantMap &spec) {
+    QVariantList tracks;
+    const QVariantList given = spec.value(QStringLiteral("captionTracks")).toList();
+    if (given.isEmpty()) {
+        const QVariantList cues = spec.value(QStringLiteral("captionCues")).toList();
+        if (!cues.isEmpty()) tracks.append(QVariantMap{{"track", spec.value(QStringLiteral("captionTrack"), -1)}, {"code", QString()},
+                                                       {"name", QString()}, {"cues", cues}});
+        return tracks;
+    }
+    for (const QVariant &v : given)
+        if (!v.toMap().value(QStringLiteral("cues")).toList().isEmpty()) tracks.append(v);
+    return tracks;
+}
+
+QStringList sidecarPaths(const QString &path, const QVariantMap &spec) {
+    QString format = spec.value(QStringLiteral("sidecarFormat")).toString();
+    if (!CaptionFormats::formats().contains(format)) format = QStringLiteral("srt");
+    QStringList languages;
+    for (const QVariant &v : captionTracksOf(spec)) languages.append(v.toMap().value(QStringLiteral("code")).toString());
+    const QFileInfo file(path);
+    return CaptionFormats::trackPaths(file.dir().filePath(file.completeBaseName()), languages, format);
 }
 
 QVariantList checkOutputs(const QVariantList &jobs, const QStringList &reserved) {
@@ -218,6 +241,7 @@ QVariantMap normalized(const QVariantMap &in) {
     def("abitrate", 192);
     def("channels", 2);
     def("subtitles", QStringLiteral("none"));
+    def("sidecarFormat", QStringLiteral("srt"));
     def("rangeIn", -1);
     def("rangeOut", -1);
     def("handles", 0);
@@ -1239,6 +1263,11 @@ QStringList startArgs(const EncoderSettings &s) {
 
 QStringList ffmpegMuxSubtitleArgs(const QVariantMap &in, const QString &input,
                                   const QString &subtitles, const QString &output) {
+    return ffmpegMuxSubtitleArgs(in, input, QList<SubtitleStream>{{subtitles, QStringLiteral("eng"), QString()}}, output);
+}
+
+QStringList ffmpegMuxSubtitleArgs(const QVariantMap &in, const QString &input,
+                                  const QList<SubtitleStream> &streams, const QString &output) {
     const QVariantMap spec = normalized(in);
     const QString ffmpeg = QStandardPaths::findExecutable(QStringLiteral("ffmpeg"));
     if (ffmpeg.isEmpty())
@@ -1248,13 +1277,21 @@ QStringList ffmpegMuxSubtitleArgs(const QVariantMap &in, const QString &input,
                          : container == QStringLiteral("webm") ? QStringLiteral("webvtt")
                                                                 : QStringLiteral("mov_text");
     QStringList a{ffmpeg, QStringLiteral("-y"), QStringLiteral("-nostdin"),
-                  QStringLiteral("-loglevel"), QStringLiteral("error"),
-                  QStringLiteral("-i"), input, QStringLiteral("-i"), subtitles,
-                  // The pictures and the sound: the file's timecode track is not a
-                  // stream to copy, it is made again from the timecode the pictures carry.
-                  QStringLiteral("-map"), QStringLiteral("0:v?"), QStringLiteral("-map"), QStringLiteral("0:a?"), QStringLiteral("-map"), QStringLiteral("1:0"),
-                  QStringLiteral("-c"), QStringLiteral("copy"), QStringLiteral("-c:s"), scodec,
-                  QStringLiteral("-metadata:s:s:0"), QStringLiteral("language=eng")};
+                  QStringLiteral("-loglevel"), QStringLiteral("error"), QStringLiteral("-i"), input};
+    for (const SubtitleStream &s : streams) a << QStringLiteral("-i") << s.file;
+    // The pictures and the sound: the file's timecode track is not a
+    // stream to copy, it is made again from the timecode the pictures carry.
+    a << QStringLiteral("-map") << QStringLiteral("0:v?") << QStringLiteral("-map") << QStringLiteral("0:a?");
+    for (int i = 0; i < streams.size(); ++i) a << QStringLiteral("-map") << QStringLiteral("%1:0").arg(i + 1);
+    a << QStringLiteral("-c") << QStringLiteral("copy") << QStringLiteral("-c:s") << scodec;
+    // Each caption stream's language, and its name (MP4 and MOV keep it as
+    // the track's name and its handler's).
+    for (int i = 0; i < streams.size(); ++i) {
+        const QString tag = QStringLiteral("-metadata:s:s:%1").arg(i);
+        a << tag << QStringLiteral("language=") + (streams.at(i).language.isEmpty() ? QStringLiteral("und") : streams.at(i).language);
+        if (!streams.at(i).title.isEmpty())
+            a << tag << QStringLiteral("title=") + streams.at(i).title << tag << QStringLiteral("handler_name=") + streams.at(i).title;
+    }
     if (container == QStringLiteral("mp4") || container == QStringLiteral("mov"))
         a << QStringLiteral("-movflags") << QStringLiteral("+faststart");
     if (container == QStringLiteral("mp4"))
@@ -1646,16 +1683,36 @@ QVariantList validate(const QVariantMap &in, const QVariantMap &ctx) {
     }
     // Subtitles.
     const QString subs = str(spec, "subtitles", QStringLiteral("none"));
+    // The caption tracks: the job's own, or the timeline's the checks are made for.
+    QVariantMap captioned = spec;
+    if (!spec.contains(QStringLiteral("captionTracks")) && ctx.contains(QStringLiteral("captionTracks")))
+        captioned.insert(QStringLiteral("captionTracks"), ctx.value(QStringLiteral("captionTracks")));
     if (subs != QStringLiteral("none")) {
         if (!ctx.value(QStringLiteral("hasCaptions")).toBool())
             warn(QCoreApplication::translate("ExportSpec", "No captions on the timeline — the subtitle option does nothing"));
         else if (subs == QStringLiteral("embed") && !video)
             warn(QCoreApplication::translate("ExportSpec", "Subtitles cannot be embedded in an audio file — writing a sidecar instead"));
         else if (subs == QStringLiteral("embed") && (container == QStringLiteral("mkv") || container == QStringLiteral("mp4")
-                                                     || container == QStringLiteral("mov") || container == QStringLiteral("webm")))
-            out.append(row(QStringLiteral("ok"), QCoreApplication::translate("ExportSpec", "Captions will be embedded")));
-        else if (subs == QStringLiteral("embed"))
+                                                     || container == QStringLiteral("mov") || container == QStringLiteral("webm"))) {
+            const int tracks = int(captionTracksOf(captioned).size());
+            out.append(row(QStringLiteral("ok"), tracks > 1
+                ? QCoreApplication::translate("ExportSpec", "Captions will be embedded: %1 caption tracks, each with its language").arg(tracks)
+                : QCoreApplication::translate("ExportSpec", "Captions will be embedded")));
+        } else if (subs == QStringLiteral("embed"))
             warn(QCoreApplication::translate("ExportSpec", "This container cannot embed subtitles — writing a sidecar instead"));
+        const QString sidecarFormat = spec.value(QStringLiteral("sidecarFormat"), QStringLiteral("srt")).toString();
+        if (!CaptionFormats::formats().contains(sidecarFormat))
+            bad(QCoreApplication::translate("ExportSpec", "Unknown sidecar caption format “%1” (srt, vtt, itt or scc)").arg(sidecarFormat));
+        // Captions that SCC cannot hold stop the delivery before it starts.
+        const bool sidecar = subs == QStringLiteral("sidecar")
+            || (subs == QStringLiteral("embed") && !(video && QStringList{"mp4", "mov", "mkv", "webm"}.contains(container)));
+        const double captionFps = ctx.value(QStringLiteral("fps")).toDouble();
+        if (sidecar && sidecarFormat == QStringLiteral("scc") && captionFps > 0)
+            for (const QVariant &v : captionTracksOf(captioned)) {
+                QString why;
+                CaptionFormats::writeScc(v.toMap().value(QStringLiteral("cues")).toList(), captionFps, {}, &why);
+                if (!why.isEmpty()) { bad(why); break; }
+            }
     }
 
     // Range.
@@ -1667,6 +1724,12 @@ QVariantList validate(const QVariantMap &in, const QVariantMap &ctx) {
         else
             out.append(row(QStringLiteral("ok"), QCoreApplication::translate("ExportSpec", "In/Out range is valid")));
     }
+
+    // The caption checks (Caption Style ▸ Rules): what they find, when the
+    // captions go out with the file, as a sidecar, embedded or burnt in.
+    if (str(spec, "subtitles", QStringLiteral("none")) != QStringLiteral("none") && ctx.value(QStringLiteral("hasCaptions")).toBool())
+        for (const QString &finding : ctx.value(QStringLiteral("captionChecks")).toStringList())
+            warn(QCoreApplication::translate("ExportSpec", "Captions: %1").arg(finding));
 
     // Media and effects.
     const QStringList missing = ctx.value(QStringLiteral("missingMedia")).toStringList();

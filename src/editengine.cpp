@@ -6,6 +6,7 @@
 #include <QFontMetricsF>
 #include <QJsonDocument>
 #include <QPainter>
+#include <QPainterPath>
 #include <QTextCharFormat>
 #include <QGlyphRun>
 #include <QRawFont>
@@ -14,6 +15,7 @@
 #include <cmath>
 #include <cstring>
 #include <memory>
+#include <vector>
 
 QStringList EditEngine::parameters(const QString &group) {
     if (group == "rect")
@@ -23,6 +25,27 @@ QStringList EditEngine::parameters(const QString &group) {
     if (group == "color")
         return {"colorB", "colorC", "colorS"};
     return {};
+}
+
+const QStringList &EditEngine::titleLookKeys() {
+    static const QStringList keys{"shadow", "shadowColor", "shadowOffset", "shadowSoftness",
+                                  "outlineColor", "outlineWidth", "boxPadding", "boxRadius"};
+    return keys;
+}
+
+QVariantMap EditEngine::titleStyleOfEntry(const QVariantMap &e) {
+    QVariantMap style;
+    for (const auto &key : QStringList{"Font", "Color", "Size", "Place", "Align", "Weight", "Italic", "Bg", "Outline",
+                                       "PixelSize", "Tracking", "LineSpacing", "Margin", "Width"}) {
+        QString name = key;
+        name[0] = name[0].toLower();
+        style[name] = e.value("title" + key);
+    }
+    const QVariantMap look = e.value("titleLook").toMap();
+    for (const QString &key : titleLookKeys())
+        if (look.contains(key))
+            style[key] = look.value(key);
+    return style;
 }
 
 double EditEngine::valueAt(const QVariantList &keys, int frame, double fallback, const char *valueName) {
@@ -379,20 +402,35 @@ QImage EditEngine::render(const QImage &source, const QVariantMap &config, int f
         if (!fg.isValid())
             fg = Qt::white;
         format.setForeground(fg);
-        if (style.value("outline", true).toBool())
-            format.setTextOutline(QPen(Qt::black, 2 * scale));
-        layout.setFormats({QTextLayout::FormatRange{0, int(layout.text().size()), format}});
-        layout.beginLayout();
-        double total = 0;
-        while (true) {
-            auto line = layout.createLine();
-            if (!line.isValid())
-                break;
-            line.setLineWidth(boxWidth);
-            line.setPosition(QPointF(0, total));
-            total += line.height() * lineSpacing;
-        }
-        layout.endLayout();
+        // The outline: a dark edge of 2 pixels unless its colour or width
+        // are given (titleLook).
+        QColor edgeColour(style.value("outlineColor").toString());
+        if (!edgeColour.isValid())
+            edgeColour = Qt::black;
+        const double edgeWidth = style.contains("outlineWidth") && !style.value("outlineWidth").isNull()
+                                     ? qBound(0., style.value("outlineWidth").toDouble(), 20.) : 2.;
+        const bool outlined = style.value("outline", true).toBool() && edgeWidth > 0;
+        // Laid out again whenever the formats change (the outline pass, the
+        // shadow's silhouette): the same lines each time.
+        const auto layOut = [&](const QTextCharFormat &with) {
+            layout.setFormats({QTextLayout::FormatRange{0, int(layout.text().size()), with}});
+            layout.beginLayout();
+            double y = 0;
+            while (true) {
+                auto line = layout.createLine();
+                if (!line.isValid())
+                    break;
+                line.setLineWidth(boxWidth);
+                line.setPosition(QPointF(0, y));
+                y += line.height() * lineSpacing;
+            }
+            layout.endLayout();
+            return y;
+        };
+        QTextCharFormat edged = format;
+        if (outlined)
+            edged.setTextOutline(QPen(edgeColour, edgeWidth * scale));
+        const double total = layOut(edged);
         // Centred by the letters themselves (the union of the glyphs' outlines),
         // not by the lines' boxes, whose room for descenders and line gap would
         // sit the words low: on the frame's middle, or at 80 % for a lower third.
@@ -418,37 +456,142 @@ QImage EditEngine::render(const QImage &source, const QVariantMap &config, int f
         QPainter p(&result);
         p.setRenderHint(QPainter::TextAntialiasing);
         QColor bg(style.value("bg").toString());
+        // The box's room round the words and its rounded corners, in pixels
+        // (titleLook); unset, the box titles always had.
+        const bool padded = style.contains("boxPadding") && !style.value("boxPadding").isNull();
+        const double padding = padded ? qBound(0., style.value("boxPadding").toDouble(), 200.) * scale : 0.;
+        const double radius = qBound(0., style.value("boxRadius", 0.).toDouble(), 200.) * scale;
         if (bg.isValid() && bg.alpha() > 0 && edge) {
             // A caption's box sits behind each line's words, edge to edge
             // between the lines.
-            const double pad = font.pixelSize() * .25;
+            const double pad = padded ? padding : font.pixelSize() * .25;
+            QList<QRectF> boxes;
             for (int i = 0; i < layout.lineCount(); ++i) {
                 const QTextLine line = layout.lineAt(i);
                 const QRectF words = line.naturalTextRect();
                 if (words.width() <= 0) continue;
                 const double y0 = top + line.y() - (i == 0 ? pad * .5 : 0);
                 const double y1 = top + (i + 1 < layout.lineCount() ? layout.lineAt(i + 1).y() : line.y() + line.height() + pad * .5);
-                p.fillRect(QRectF(left + words.x() - pad, y0, words.width() + 2 * pad, y1 - y0), bg);
+                boxes.append(QRectF(left + words.x() - pad, y0, words.width() + 2 * pad, y1 - y0));
             }
-        } else if (bg.isValid() && bg.alpha() > 0)
-            p.fillRect(QRectF(left - 4 * scale, top - 4 * scale, boxWidth + 8 * scale, total + 8 * scale),
-                       bg);
+            if (radius <= 0) {
+                for (const QRectF &box : std::as_const(boxes))
+                    p.fillRect(box, bg);
+            } else {
+                // Rounded on the outer corners only: a line wider than the
+                // one above (or below) rounds the corners that stand out,
+                // and the lines join square. Filled as one shape, so a
+                // see-through box is no darker where two lines meet.
+                QPainterPath shape;
+                for (int i = 0; i < boxes.size(); ++i) {
+                    const QRectF b = boxes.at(i);
+                    const QRectF *above = i > 0 ? &boxes.at(i - 1) : nullptr;
+                    const QRectF *below = i + 1 < boxes.size() ? &boxes.at(i + 1) : nullptr;
+                    const double r = qMin(radius, qMin(b.width(), b.height()) / 2);
+                    const double tl = !above || b.left() < above->left() - .5 ? r : 0;
+                    const double tr = !above || b.right() > above->right() + .5 ? r : 0;
+                    const double bl = !below || b.left() < below->left() - .5 ? r : 0;
+                    const double br = !below || b.right() > below->right() + .5 ? r : 0;
+                    QPainterPath one;
+                    one.moveTo(b.left() + tl, b.top());
+                    one.lineTo(b.right() - tr, b.top());
+                    if (tr > 0) one.arcTo(QRectF(b.right() - 2 * tr, b.top(), 2 * tr, 2 * tr), 90, -90);
+                    one.lineTo(b.right(), b.bottom() - br);
+                    if (br > 0) one.arcTo(QRectF(b.right() - 2 * br, b.bottom() - 2 * br, 2 * br, 2 * br), 0, -90);
+                    one.lineTo(b.left() + bl, b.bottom());
+                    if (bl > 0) one.arcTo(QRectF(b.left(), b.bottom() - 2 * bl, 2 * bl, 2 * bl), 270, -90);
+                    one.lineTo(b.left(), b.top() + tl);
+                    if (tl > 0) one.arcTo(QRectF(b.left(), b.top(), 2 * tl, 2 * tl), 180, -90);
+                    one.closeSubpath();
+                    shape = shape.united(one);
+                }
+                p.save();
+                p.setRenderHint(QPainter::Antialiasing);
+                p.fillPath(shape, bg);
+                p.restore();
+            }
+        } else if (bg.isValid() && bg.alpha() > 0) {
+            const double pad = padded ? padding : 4 * scale;
+            const QRectF box(left - pad, top - pad, boxWidth + 2 * pad, total + 2 * pad);
+            if (radius <= 0)
+                p.fillRect(box, bg);
+            else {
+                QPainterPath shape;
+                const double r = qMin(radius, qMin(box.width(), box.height()) / 2);
+                shape.addRoundedRect(box, r, r);
+                p.save();
+                p.setRenderHint(QPainter::Antialiasing);
+                p.fillPath(shape, bg);
+                p.restore();
+            }
+        }
+        // A drop shadow (titleLook): the words' silhouette, edge and all, in
+        // the shadow's colour, softened and set down and to the right.
+        if (style.value("shadow").toBool()) {
+            QColor shade(style.value("shadowColor").toString());
+            if (!shade.isValid())
+                shade = Qt::black;
+            const double offset = qBound(-50., style.value("shadowOffset", 3.).toDouble(), 50.) * scale;
+            const double softness = qBound(0., style.value("shadowSoftness", 4.).toDouble(), 50.) * scale;
+            const int reach = int(std::ceil(softness * 1.5 + edgeWidth * scale + 2));
+            QRect area = QRectF(left + qMin(0., offset) - reach, top + qMin(0., offset) + qMin(0., ink.top()) - reach,
+                                boxWidth + qAbs(offset) + 2 * reach,
+                                qMax(total, ink.bottom()) - qMin(0., ink.top()) + qAbs(offset) + 2 * reach)
+                             .toAlignedRect()
+                             .intersected(QRect(0, 0, w, h));
+            if (!area.isEmpty()) {
+                QImage silhouette(area.size(), QImage::Format_ARGB32_Premultiplied);
+                silhouette.fill(Qt::transparent);
+                QTextCharFormat dark = format;
+                dark.setForeground(shade);
+                if (outlined)
+                    dark.setTextOutline(QPen(shade, edgeWidth * scale));
+                layOut(dark);
+                {
+                    QPainter s(&silhouette);
+                    s.setRenderHint(QPainter::TextAntialiasing);
+                    layout.draw(&s, QPointF(left + offset - area.x(), top + offset - area.y()));
+                }
+                // Three box blurs each way: close to a Gaussian of the softness.
+                const int radiusPx = int(std::lround(softness / 2));
+                if (radiusPx > 0) {
+                    const int sw = silhouette.width(), sh = silhouette.height();
+                    std::vector<quint32> line(size_t(qMax(sw, sh)));
+                    const auto blur = [&](bool across) {
+                        const int count = across ? sw : sh, lines = across ? sh : sw;
+                        for (int l = 0; l < lines; ++l) {
+                            const auto at = [&](int i) -> quint32 & {
+                                return across ? reinterpret_cast<quint32 *>(silhouette.scanLine(l))[i]
+                                              : reinterpret_cast<quint32 *>(silhouette.scanLine(i))[l];
+                            };
+                            for (int i = 0; i < count; ++i) line[size_t(i)] = at(i);
+                            int sum[4] = {0, 0, 0, 0};
+                            const int span = 2 * radiusPx + 1;
+                            const auto add = [&](int i, int sign) {
+                                if (i < 0 || i >= count) return;
+                                const quint32 v = line[size_t(i)];
+                                for (int c = 0; c < 4; ++c) sum[c] += sign * int((v >> (8 * c)) & 0xff);
+                            };
+                            for (int i = -radiusPx; i <= radiusPx; ++i) add(i, 1);
+                            for (int i = 0; i < count; ++i) {
+                                quint32 v = 0;
+                                for (int c = 0; c < 4; ++c) v |= quint32(qBound(0, (sum[c] + span / 2) / span, 255)) << (8 * c);
+                                at(i) = v;
+                                add(i - radiusPx, -1);
+                                add(i + radiusPx + 1, 1);
+                            }
+                        }
+                    };
+                    for (int pass = 0; pass < 3; ++pass) { blur(true); blur(false); }
+                }
+                p.drawImage(area.topLeft(), silhouette);
+            }
+            layOut(edged);
+        }
         layout.draw(&p, QPointF(left, top));
         // Fill outlined glyphs independently of the painter's outline brush.
-        if (style.value("outline", true).toBool()) {
-            format.clearProperty(QTextFormat::TextOutline);
-            layout.setFormats({QTextLayout::FormatRange{0, int(layout.text().size()), format}});
-            layout.beginLayout();
-            double lineY = 0;
-            while (true) {
-                auto line = layout.createLine();
-                if (!line.isValid())
-                    break;
-                line.setLineWidth(boxWidth);
-                line.setPosition(QPointF(0, lineY));
-                lineY += line.height() * lineSpacing;
-            }
-            layout.endLayout();
+        if (outlined) {
+            layOut(format);
             layout.draw(&p, QPointF(left, top));
         }
     }

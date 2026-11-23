@@ -43,7 +43,47 @@ QVariantMap Timeline::titleStyleOf(const QVariantMap &entry) {
     style.insert(QStringLiteral("caption"), entry.value(ClipKey::caption));
     for(const auto &pair:QList<QPair<QString,QString>>{{"titleTracking","tracking"},{"titleLineSpacing","lineSpacing"},{"titlePixelSize","pixelSize"},{"titleMargin","margin"},{"titleWidth","width"}})
         if(entry.contains(pair.first))style[pair.second]=entry.value(pair.first);
+    // The fuller look rides with the rest, flat, as connectTitleAt takes it.
+    const QVariantMap look = entry.value(ClipKey::titleLook).toMap();
+    for (auto it = look.begin(); it != look.end(); ++it) style.insert(it.key(), it.value());
+    if (entry.contains(ClipKey::speaker)) style.insert(QStringLiteral("speaker"), entry.value(ClipKey::speaker));
+    if (entry.value(ClipKey::ownStyle).toBool()) style.insert(QStringLiteral("ownStyle"), true);
     return style;
+}
+
+QVariantMap Timeline::captionLookOf(const QVariantMap &style) {
+    const auto text = [&](const char *key, const QString &fallback) {
+        const QString v = style.value(QLatin1String(key)).toString();
+        return v.isEmpty() ? fallback : v;
+    };
+    const auto number = [&](const char *key, double fallback) {
+        const QVariant v = style.value(QLatin1String(key));
+        return v.isValid() && !v.isNull() ? qRound(v.toDouble() * 100) / 100. : fallback;
+    };
+    const QString place = text("place", QStringLiteral("centre"));
+    const bool edge = place == QStringLiteral("top") || place == QStringLiteral("bottom");
+    const bool shadow = style.value("shadow").toBool();
+    return {{"place", place}, {"size", text("size", QStringLiteral("medium"))}, {"font", text("font", {})},
+            {"color", text("color", QStringLiteral("#ffffff")).toLower()}, {"align", text("align", QStringLiteral("centre"))},
+            {"weight", text("weight", {})}, {"italic", style.value("italic").toBool()}, {"bg", text("bg", {}).toLower()},
+            {"outline", !style.contains("outline") || style.value("outline").isNull() || style.value("outline").toBool()},
+            {"pixelSize", number("pixelSize", 0)}, {"tracking", number("tracking", 0)}, {"lineSpacing", number("lineSpacing", 1)},
+            {"margin", edge ? number("margin", 8) : 0.}, {"width", edge ? number("width", 90) : 0.},
+            {"shadow", shadow}, {"shadowColor", shadow ? text("shadowColor", QStringLiteral("#000000")).toLower() : QString()},
+            {"shadowOffset", shadow ? number("shadowOffset", 3) : 0.}, {"shadowSoftness", shadow ? number("shadowSoftness", 4) : 0.},
+            {"outlineColor", text("outlineColor", QStringLiteral("#000000")).toLower()}, {"outlineWidth", number("outlineWidth", 2)},
+            {"boxPadding", number("boxPadding", -1)}, {"boxRadius", number("boxRadius", 0)}};
+}
+
+bool Timeline::captionHasOwnLook(const QVariantMap &e, const QVariantMap &trackStyle) {
+    const bool moved = !qFuzzyIsNull(e.value(ClipKey::rectX, 0.).toDouble()) || !qFuzzyIsNull(e.value(ClipKey::rectY, 0.).toDouble())
+                       || !qFuzzyCompare(e.value(ClipKey::rectW, 1.).toDouble(), 1.) || !qFuzzyCompare(e.value(ClipKey::rectH, 1.).toDouble(), 1.);
+    return e.value(ClipKey::ownStyle).toBool() || moved
+           || captionLookOf(titleStyleOf(e)) != captionLookOf(trackStyle.isEmpty() ? legacyCaptionStyle() : trackStyle);
+}
+
+QVariantMap Timeline::legacyCaptionStyle() {
+    return {{"place", "lower"}, {"size", "small"}, {"bg", "#99000000"}};
 }
 
 bool Timeline::connectTitleAt(const QString &text, int position, int length,
@@ -121,6 +161,12 @@ bool Timeline::connectTitleAt(const QString &text, int position, int length,
         producer.set("omavid:titleOutline", 0);
     if (style.value(QStringLiteral("caption")).toBool() || (lane>0 && lane<trackCount() && m_tracks[size_t(lane)].mix.value("editKind")=="caption"))
         producer.set("omavid:caption", 1);
+    // A caption's speaker, and its own look kept from its track's style.
+    const QString speaker = style.value(QStringLiteral("speaker")).toString().simplified().left(80);
+    if (!speaker.isEmpty())
+        producer.set("omavid:speaker", speaker.toUtf8().constData());
+    if (style.value(QStringLiteral("ownStyle")).toBool())
+        producer.set("omavid:ownStyle", 1);
 
     QVariantMap typography;
     if(style.contains("tracking"))typography["tracking"]=qBound(-50.,style.value("tracking").toDouble(),200.);
@@ -131,9 +177,38 @@ bool Timeline::connectTitleAt(const QString &text, int position, int length,
     // drawn by the engine, which wraps and places by them.
     if(style.contains("margin")||edge)typography["margin"]=qBound(0.,style.value("margin",8.).toDouble(),45.);
     if(style.contains("width")||edge)typography["width"]=qBound(20.,style.value("width",90.).toDouble(),100.);
+    // The fuller look (EditEngine::titleLookKeys), each only when given: a
+    // title without them is drawn as titles always were.
+    const auto colour = [](const QVariant &v) {
+        const QString c = v.toString().toLower();
+        static const QRegularExpression hex(QStringLiteral("^#([0-9a-f]{6}|[0-9a-f]{8})$"));
+        return hex.match(c).hasMatch() ? c : QString();
+    };
+    const auto given = [&style](const char *key) {
+        const QVariant v = style.value(QLatin1String(key));
+        return v.isValid() && !v.isNull();
+    };
+    // A value that draws as the default (no shadow, a black edge of 2, square
+    // corners, automatic padding: below 0) is left out, so a title in the old
+    // look is kept as it always was.
+    if (given("shadow") && style.value("shadow").toBool()) {
+        typography["shadow"] = true;
+        if (given("shadowColor") && !colour(style.value("shadowColor")).isEmpty()) typography["shadowColor"] = colour(style.value("shadowColor"));
+        if (given("shadowOffset")) typography["shadowOffset"] = qBound(-50., style.value("shadowOffset").toDouble(), 50.);
+        if (given("shadowSoftness")) typography["shadowSoftness"] = qBound(0., style.value("shadowSoftness").toDouble(), 50.);
+    }
+    if (given("outlineColor") && !colour(style.value("outlineColor")).isEmpty() && colour(style.value("outlineColor")) != QStringLiteral("#000000")
+        && colour(style.value("outlineColor")) != QStringLiteral("#ff000000"))
+        typography["outlineColor"] = colour(style.value("outlineColor"));
+    if (given("outlineWidth") && !qFuzzyCompare(style.value("outlineWidth").toDouble(), 2.))
+        typography["outlineWidth"] = qBound(0., style.value("outlineWidth").toDouble(), 20.);
+    if (given("boxPadding") && style.value("boxPadding").toDouble() >= 0)
+        typography["boxPadding"] = qMin(style.value("boxPadding").toDouble(), 200.);
+    if (given("boxRadius") && style.value("boxRadius").toDouble() > 0)
+        typography["boxRadius"] = qMin(style.value("boxRadius").toDouble(), 200.);
     if(!typography.isEmpty()){
         producer.set("omavid:titleTypography",QJsonDocument::fromVariant(typography).toJson(QJsonDocument::Compact).constData());
-        QVariantMap styled=style;for(auto it=typography.begin();it!=typography.end();++it)styled[it.key()]=it.value();styled["place"]=placed;
+        QVariantMap styled=style;for(const QString &key:EditEngine::titleLookKeys())styled.remove(key);for(auto it=typography.begin();it!=typography.end();++it)styled[it.key()]=it.value();styled["place"]=placed;
         edit::Filter titleFilter(*m_profile,"omaedit.title");
         titleFilter.set("config",QJsonDocument::fromVariant(QVariantMap{{"group","title"},{"style",styled},{"text",text},{"height",m_profile->height()}}).toJson(QJsonDocument::Compact).constData());
         producer.attach(titleFilter);
@@ -441,6 +516,9 @@ bool Timeline::updateTitlePlain(int index, const QString &text,
     const QVariantMap map = clip >= 0 ? entryMapOn(laneIdx + 1, clip) : QVariantMap();
     delete laneAt(laneIdx)->replace_with_blank(entry);
     QVariantMap newStyle=style;if(map.value(ClipKey::caption).toBool())newStyle["caption"]=true;
+    // A caption keeps its speaker and its own-look mark unless told otherwise.
+    if(!newStyle.contains("speaker")&&map.contains(ClipKey::speaker))newStyle["speaker"]=map.value(ClipKey::speaker);
+    if(!newStyle.contains("ownStyle")&&map.value(ClipKey::ownStyle).toBool())newStyle["ownStyle"]=true;
     if (!connectTitleAt(text, start, frames, newStyle, laneIdx + 1))
         return false;
     const int placed = clipIndexAt(laneIdx + 1, start);

@@ -165,7 +165,9 @@ Edit.TimelineClip {
         backend.seek(Math.round(timelineStart + markers[i].frac * timelineFrames))
     }
     name: modelData.mcam !== undefined ? win.mcamAngleName(modelData)
-          : modelData.caption === true ? qsTr("CC · %1").arg(modelData.name) : modelData.name
+          : modelData.caption === true ? (modelData.speaker ? qsTr("CC · %1: %2").arg(modelData.speaker).arg(modelData.name)
+                                                            : qsTr("CC · %1").arg(modelData.name))
+          : modelData.name
     // (A recording an older project holds on a video row is drawn as the sound it is.)
     kind: isTitle ? "title" : (audioOnly || modelData.pictureless === true ? "audio" : "video")
     speedBadge: MediaTime.isHeldPicture(modelData) ? "❄ " + qsTr("freeze") : ""
@@ -182,6 +184,18 @@ Edit.TimelineClip {
     dragging: dragOffset !== 0 || groupRiding
     disabled: modelData.disabled === true
     showFadeHandles: (selected || fadeInFrames > 0 || fadeOutFrames > 0)
+    // A caption's speaker, in their colour, along the top of its block.
+    Rectangle {
+        objectName: "captionSpeakerStrip"
+        visible: laneBlock.modelData.caption === true && !!laneBlock.modelData.speaker
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: Ui.Theme.clipOutlineWidth
+        height: 5
+        z: 4
+        color: visible ? (win.speakerColours[laneBlock.modelData.speaker] || "transparent") : "transparent"
+    }
     // As on V1: a sliver in a fit view, or a block out of view, draws no
     // strip or wave, so it asks the engine for none each time one arrives.
     readonly property var decor: {

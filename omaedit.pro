@@ -13,6 +13,7 @@ include(keyboardnavigation.pri)
 HEADERS += \
     src/backend.h \
     src/backend_p.h \
+    src/captionformats.h \
     src/exportspec.h \
     src/filepicker.h \
     src/loudness.h \
@@ -52,6 +53,7 @@ SOURCES += \
     src/backendsequences.cpp \
     src/backendtiming.cpp \
     src/backendviewer.cpp \
+    src/captionformats.cpp \
     src/exportspec.cpp \
     src/filepicker.cpp \
     src/loudness.cpp \
@@ -152,6 +154,9 @@ SOURCES += src/workspacelayouts.cpp
 HEADERS += src/workspacelayouts.h
 SOURCES += src/effectshelf.cpp src/hardwaresettings.cpp src/transcriber.cpp src/lutlibrary.cpp src/volumes.cpp src/removabledisks.cpp src/audiometers.cpp src/loudnesspass.cpp
 HEADERS += src/effectshelf.h src/hardwaresettings.h src/transcriber.h src/lutlibrary.h src/volumes.h src/removabledisks.h src/audiometers.h src/loudnesspass.h
+# The caption list: its checks, words, timing and speakers.
+SOURCES += src/backendcaptionlist.cpp src/playerworkercaptionlist.cpp src/captionchecks.cpp
+HEADERS += src/captionchecks.h
 
 SOURCES += src/commandregistry.cpp
 HEADERS += src/commandregistry.h

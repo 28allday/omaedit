@@ -22,6 +22,16 @@ QVariantList scaledEffects(const QVariantList &stack, double ratio);
 QVariantMap motionPreset(const QVariantMap &entry, const QString &preset,
                          const QVariantMap &options, double fps, QString *error);
 QImage render(const QImage &source, const QVariantMap &config, int frame);
+// The title's fuller look beyond the first keys, kept together on a title
+// (ClipEntry::titleLook, a producer's typography): a drop shadow (shadow
+// on/off, shadowColor #rrggbb or #aarrggbb, shadowOffset and shadowSoftness
+// in pixels), the outline's outlineColor and outlineWidth (pixels; 2 when
+// unset, the edge titles always had), and the box's boxPadding and
+// boxRadius (pixels). Pixels are the timeline's frame's, scaled with it.
+const QStringList &titleLookKeys();
+// A title entry's whole style as the "title" group draws it: its title*
+// keys, and its titleLook keys alongside.
+QVariantMap titleStyleOfEntry(const QVariantMap &entry);
 void attach(edit::Profile &profile, edit::Producer &cut, const QVariantMap &entry, int in, int out,
             bool includeStatic = false);
 } // namespace EditEngine

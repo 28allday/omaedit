@@ -174,6 +174,13 @@ public:
     // Project data, persisted beside the master mix; not undoable.
     QVariantList adrCues() const { return m_adrCues; }
     void setAdrCues(const QVariantList &cues) { m_adrCues = cues; }
+    // The timeline's caption settings: {rules: the caption checks'
+    // thresholds and Generate Captions' two-speaker choice (only the keys
+    // set; see CaptionChecks), speakers: [{name, colour}]}. Project data
+    // beside the ADR cues ("captions" in the project file, omavid:captions
+    // in an undo snapshot); empty in a project from before it.
+    QVariantMap captionSettings() const { return m_captionSettings; }
+    void setCaptionSettings(const QVariantMap &settings) { m_captionSettings = settings; }
     // Project settings (File ▸ Project Settings…): {custom, width, height,
     // fpsNum, fpsDen, colorspace (601|709|2020), sampleRate, channels,
     // startFrame, startRate}. With `custom` off the frame size and rate follow the
@@ -833,6 +840,17 @@ public:
     // the producer as omavid:title* props, so snapshots and XML keep them.
     // The style a title entry was made with, as connectTitleAt takes it.
     static QVariantMap titleStyleOf(const QVariantMap &entry);
+    // A caption's look in a form two can be compared in: every drawn key,
+    // what is left unset as the title reads it back. A caption made with a
+    // caption track's style compares equal to that style.
+    static QVariantMap captionLookOf(const QVariantMap &style);
+    // Whether a caption entry keeps a look of its own rather than following
+    // `trackStyle` (its caption track's): marked so (ownStyle), dragged
+    // from its place, or drawn differently.
+    static bool captionHasOwnLook(const QVariantMap &entry, const QVariantMap &trackStyle);
+    // The look a caption track gives captions that follow it, from before
+    // there were caption styles when it keeps none.
+    static QVariantMap legacyCaptionStyle();
     bool connectTitleAt(const QString &text, int position, int length,
                         const QVariantMap &style = QVariantMap(),
                         int lane = -1);
@@ -1307,6 +1325,7 @@ private:
     QVariantMap m_master;
     QVariantMap m_deliveredSound;
     QVariantList m_adrCues;
+    QVariantMap m_captionSettings;
     QVariantMap m_project = defaultProjectSettings();
     void applyProjectProfile(edit::Profile &profile) const;
     // Counts the starting timecode at the timeline's rate once it has one
