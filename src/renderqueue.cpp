@@ -1,4 +1,7 @@
 #include "renderqueue.h"
+#ifdef __GLIBC__
+#include <malloc.h>
+#endif
 #include "playerworker.h"
 #include <QSet>
 #include <QLockFile>
@@ -727,6 +730,12 @@ void RenderQueue::onEnded(bool ok, const QString &path, const QString &reason, c
     if (m_released)
         m_released->remove(id);
     touch();
+#ifdef __GLIBC__
+    // What the job's encoders freed goes back to the system now. Left to the
+    // allocator, each of their threads' arenas keeps it, and a queue of
+    // renders held gigabytes it no longer used, more with each turn.
+    malloc_trim(0);
+#endif
     emit jobFinished(id, ok, path, reason);
     // Cancelling stops the queue where it is; a failure carries on.
     if (reason != QStringLiteral("Cancelled") || !m_queuePaused)
