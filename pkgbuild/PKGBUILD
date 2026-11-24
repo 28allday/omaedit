@@ -1,7 +1,7 @@
 # Maintainer: 28allday
 
 pkgname=omaedit
-pkgver=0.2.5
+pkgver=0.2.6
 pkgrel=1
 pkgdesc='Video editor with media, edit, colour, audio and delivery workspaces'
 arch=('x86_64' 'aarch64')

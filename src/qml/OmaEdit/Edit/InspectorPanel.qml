@@ -864,7 +864,11 @@ Rectangle {
                     selectedTextColor: Theme.accentText
                     selectByMouse: true
                     hoverEnabled: true
-                    padding: 3
+                    // Each side set here: the style works its top padding out
+                    // from its own background's height, and this background
+                    // has none, so the words sat above a box shorter than they.
+                    topPadding: 3
+                    bottomPadding: 3
                     leftPadding: 4
                     rightPadding: 4
                     topInset: 0
