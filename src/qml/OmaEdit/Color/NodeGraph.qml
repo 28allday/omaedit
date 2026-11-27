@@ -116,7 +116,7 @@ Rectangle {
     focus: true
     Keys.onEscapePressed: { connecting="";graphMessage="" }
     Item {
-        id: header
+        id: headerBar
         width: parent.width
         height: nodeActions.inBar ? 0 : Theme.hTab
         visible: !nodeActions.inBar
@@ -124,7 +124,7 @@ Rectangle {
         DockBarActions {
             id: nodeActions
             dockBar: root.dockBar
-            fallback: header
+            fallback: headerBar
             IconButton { objectName: "leaveCompound"; visible: root.pathLabel!==""; iconName: "arrow-left"; text: qsTr("Parent graph"); onClicked: root.leaveRequested() }
             IconButton { visible: !root.lean; objectName: "faceObjectMask"; iconName: "wand-sparkles"; text: qsTr("AI mask: grade the people in the picture"); enabled:root.editable; onClicked:root.maskRequested() }
             IconButton { visible: !root.lean; objectName: "sharedGrades"; iconName: "link"; text: qsTr("Shared grades and remote versions"); enabled:root.editable; onClicked:root.sharingRequested() }
@@ -145,7 +145,7 @@ Rectangle {
         id: stack
         objectName: "layerStack"
         visible: root.stacked
-        anchors.top: header.bottom
+        anchors.top: headerBar.bottom
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
@@ -163,7 +163,7 @@ Rectangle {
             onTapped: function (ev) { nodeMenu.popup(stack, ev.position.x, ev.position.y) }
         }
         delegate: Rectangle {
-            id: layer
+            id: layerRow
             required property int index
             // The top row is the last correction applied.
             readonly property int at: root.nodes.length - 1 - index
@@ -195,27 +195,27 @@ Rectangle {
             Keys.onPressed: function (event) {
                 if (event.key === Qt.Key_Up || event.key === Qt.Key_Down) {
                     const delta = event.key === Qt.Key_Up ? 1 : -1 // up the stack is later in the order
-                    const destination = layer.at + delta
-                    if (event.modifiers & Qt.AltModifier) { root.move(layer.at, delta); Qt.callLater(function () { root.focusLayer(destination) }) }
+                    const destination = layerRow.at + delta
+                    if (event.modifiers & Qt.AltModifier) { root.move(layerRow.at, delta); Qt.callLater(function () { root.focusLayer(destination) }) }
                     else root.focusLayer(destination)
-                } else if (event.key === Qt.Key_Space) root.toggleEnabled(layer.at)
-                else if (event.key === Qt.Key_F2) { labelPrompt.target = layer.at; labelPrompt.open() }
-                else if (event.key === Qt.Key_Delete) root.remove(layer.at)
-                else if (event.key === Qt.Key_Menu) { root.nodeSelected(layer.at); nodeMenu.popup(layer, layer.width / 2, layer.height / 2) }
-                else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) root.nodeSelected(layer.at)
+                } else if (event.key === Qt.Key_Space) root.toggleEnabled(layerRow.at)
+                else if (event.key === Qt.Key_F2) { labelPrompt.target = layerRow.at; labelPrompt.open() }
+                else if (event.key === Qt.Key_Delete) root.remove(layerRow.at)
+                else if (event.key === Qt.Key_Menu) { root.nodeSelected(layerRow.at); nodeMenu.popup(layerRow, layerRow.width / 2, layerRow.height / 2) }
+                else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) root.nodeSelected(layerRow.at)
                 else { event.accepted = false; return }
                 event.accepted = true
             }
             IconButton {
                 id: eye
-                objectName: "layerEye:" + layer.at
+                objectName: "layerEye:" + layerRow.at
                 x: Theme.s1
                 anchors.verticalCenter: parent.verticalCenter
-                iconName: layer.on && !root.bypassAll ? "eye" : "eye-off"
-                iconColor: layer.on && !root.bypassAll ? Theme.textSecondary : Theme.textMuted
-                text: layer.on ? qsTr("Hide this layer") : qsTr("Show this layer")
+                iconName: layerRow.on && !root.bypassAll ? "eye" : "eye-off"
+                iconColor: layerRow.on && !root.bypassAll ? Theme.textSecondary : Theme.textMuted
+                text: layerRow.on ? qsTr("Hide this layer") : qsTr("Show this layer")
                 enabled: root.editable
-                onClicked: root.toggleEnabled(layer.at)
+                onClicked: root.toggleEnabled(layerRow.at)
             }
             Rectangle {
                 id: picture
@@ -227,7 +227,7 @@ Rectangle {
                 color: Theme.meterWell
                 border.color: Theme.border
                 border.width: Theme.hairline
-                opacity: layer.on && !root.bypassAll ? 1 : 0.45
+                opacity: layerRow.on && !root.bypassAll ? 1 : 0.45
                 clip: true
                 Image { anchors.fill: parent; anchors.margins: Theme.hairline; source: root.thumb; fillMode: Image.PreserveAspectCrop; asynchronous: true; visible: status === Image.Ready }
             }
@@ -239,16 +239,16 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 Text {
                     width: parent.width
-                    text: root.title(layer.at)
+                    text: root.title(layerRow.at)
                     elide: Text.ElideRight
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fsBase
-                    color: layer.on && !root.bypassAll ? Theme.textPrimary : Theme.textMuted
+                    color: layerRow.on && !root.bypassAll ? Theme.textPrimary : Theme.textMuted
                 }
                 Text {
                     width: parent.width
-                    visible: layer.note !== ""
-                    text: layer.note
+                    visible: layerRow.note !== ""
+                    text: layerRow.note
                     elide: Text.ElideRight
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fsLabel
@@ -262,19 +262,19 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: Theme.s1
                 Icon { name: "circle-dot"; size: 12; color: Theme.textSecondary
-                       visible: (layer.node.window !== undefined && layer.node.window.enabled === true) || (layer.node.qualifier !== undefined && layer.node.qualifier.enabled === true) }
+                       visible: (layerRow.node.window !== undefined && layerRow.node.window.enabled === true) || (layerRow.node.qualifier !== undefined && layerRow.node.qualifier.enabled === true) }
                 Icon { name: "diamond"; size: 12; color: Theme.accent
-                       visible: layer.node.keyframes !== undefined && Object.keys(layer.node.keyframes).length > 0 }
+                       visible: layerRow.node.keyframes !== undefined && Object.keys(layerRow.node.keyframes).length > 0 }
             }
             TapHandler {
                 acceptedButtons: Qt.LeftButton
-                onTapped: root.nodeSelected(layer.at)
-                onDoubleTapped: { labelPrompt.target = layer.at; labelPrompt.open() }
+                onTapped: root.nodeSelected(layerRow.at)
+                onDoubleTapped: { labelPrompt.target = layerRow.at; labelPrompt.open() }
             }
             TapHandler {
                 acceptedButtons: Qt.RightButton
                 gesturePolicy: TapHandler.ReleaseWithinBounds
-                onTapped: function (ev) { root.nodeSelected(layer.at); nodeMenu.popup(layer, ev.position.x, ev.position.y) }
+                onTapped: function (ev) { root.nodeSelected(layerRow.at); nodeMenu.popup(layerRow, ev.position.x, ev.position.y) }
             }
             DragHandler { // dragged past the layer above or below, it changes places with it
                 target: null
@@ -284,7 +284,7 @@ Rectangle {
                 property real taken: 0
                 property bool moved: false
                 function finish() { if (moved) { moved = false; root.dragFinished() } }
-                onActiveChanged: if (active) { taken = 0; moved = false; root.nodeSelected(layer.at) } else finish()
+                onActiveChanged: if (active) { taken = 0; moved = false; root.nodeSelected(layerRow.at) } else finish()
                 Component.onDestruction: finish()
                 onTranslationChanged: {
                     if (!active) return
@@ -299,7 +299,7 @@ Rectangle {
         id: canvas
         visible: !root.stacked
         objectName: "nodeCanvas"
-        anchors.top: header.bottom
+        anchors.top: headerBar.bottom
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
@@ -392,7 +392,7 @@ Rectangle {
             onWheel: function (e) { root.zoom = Math.max(0.5, Math.min(2, root.zoom * (e.angleDelta.y > 0 ? 1.1 : 1 / 1.1))) }
         }
     }
-    Text { anchors.left: parent.left; anchors.top: header.bottom; anchors.margins: Theme.s2; visible: root.connecting!=="" || root.graphMessage!==""; text: root.graphMessage || qsTr("Click another node's input port to connect. Esc cancels."); font.family: Theme.fontFamily; font.pixelSize: Theme.fsLabel; color: root.graphMessage?Theme.warning:Theme.accent }
+    Text { anchors.left: parent.left; anchors.top: headerBar.bottom; anchors.margins: Theme.s2; visible: root.connecting!=="" || root.graphMessage!==""; text: root.graphMessage || qsTr("Click another node's input port to connect. Esc cancels."); font.family: Theme.fontFamily; font.pixelSize: Theme.fsLabel; color: root.graphMessage?Theme.warning:Theme.accent }
     // Mini-map: the visible window over the whole chain.
     Rectangle {
         anchors.right: parent.right

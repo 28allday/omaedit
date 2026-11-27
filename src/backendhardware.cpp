@@ -4,6 +4,7 @@
 #include "scopeprocessor.h"
 #include "interface.h"
 #include "startup.h"
+#include "engines.h"
 #include "exportspec.h"
 #include "storagepreferences.h"
 #include <QClipboard>
@@ -78,7 +79,14 @@ QString Backend::systemInformation() const {
     info["viewerProcessing"] = m_viewerProcessor ? m_viewerProcessor->information() : QVariantMap{{"backend","CPU"},{"workers",0}};
     info["scopeProcessing"] = m_scopeProcessor ? m_scopeProcessor->information() : QVariantMap{{"backend","cpu"},{"workerThreads",0}};
     info["playbackDecoder"] = SuiteVideo::defaultDecodeOptions().backend;
-    info["decodeStartup"]=SuiteVideo::decodeStartup();
+    auto decodeStartup = SuiteVideo::decodeStartup();
+    // A command-line session with software decoding finds the GPU that draws
+    // only now (agentcli.cpp).
+    if (qApp->property("omaedit.drawingDeviceLater").toBool()) {
+        const int drawing = render::engineGpu();
+        decodeStartup["drawingDevice"] = drawing >= 0 ? QString::number(drawing) : QString();
+    }
+    info["decodeStartup"] = decodeStartup;
     info["nativeDecoding"]=SuiteVideo::runtimeInformation();
     info["videoDecoderPreference"]=m_hardware->videoDecoderPreference();info["videoDecoderDevice"]=m_hardware->videoDecoderDevice();
     info["videoDecoderRestartRequired"]=m_hardware->videoDecoderRestartRequired();

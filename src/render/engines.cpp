@@ -27,6 +27,8 @@ struct Shared {
     std::vector<AVBufferRef *> retired;
     QElapsedTimer sinceLoss;        // running from the last engine lost
     bool gpuGone = false;           // lost again straight away: the CPU draws from here on
+    bool choiceKept = false;        // keepEngineChoice: `chosen` is the choice at start-up
+    QString chosen;
 };
 Shared &shared() {
     static Shared s;
@@ -45,7 +47,7 @@ constexpr qint64 kLostAgainMs = 60000;
 void rank(Shared &s) {
     if (s.rankedOnce) return;
     s.rankedOnce = true;
-    const QString chosen = QSettings().value(QStringLiteral("hardware/engineGpu")).toString();
+    const QString chosen = s.choiceKept ? s.chosen : QSettings().value(QStringLiteral("hardware/engineGpu")).toString();
     if (qEnvironmentVariable("OMAEDIT_ENGINE") == QLatin1String("cpu")) {
         s.note = QStringLiteral("CPU engine chosen (OMAEDIT_ENGINE=cpu)");
     } else if (chosen == QLatin1String("cpu")) {
@@ -145,6 +147,14 @@ bool engineLost(const engine::Engine *engine) {
 }
 
 AVBufferRef *sharedDevice(int *index) { return device(index); }
+
+void keepEngineChoice() {
+    Shared &s = shared();
+    QMutexLocker lock(&s.mutex);
+    if (s.rankedOnce || s.choiceKept) return;
+    s.chosen = QSettings().value(QStringLiteral("hardware/engineGpu")).toString();
+    s.choiceKept = true;
+}
 
 int engineGpu() {
     Shared &s = shared();

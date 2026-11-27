@@ -177,7 +177,7 @@ Item {
                     Toggle { id: findNearby; tip: qsTr("After locating one file, look beside it for the others"); label: qsTr("Search nearby after locating a file"); checked: true; enabled: !root.busy }
                     ToolButton { objectName: "relinkNearby"; text: qsTr("Find Nearby"); enabled: replacement.text.trim() !== "" && !root.busy; onClicked: root.nearby(replacement.text.trim()) }
                 }
-                Rectangle { Layout.fillWidth: true; height: Theme.hairline; color: Theme.border }
+                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: Theme.hairline; color: Theme.border }
                 Caption { text: qsTr("Every selected rule must match. File size and frame count use recorded values when available; timecode and SHA256 require recorded source information.") }
                 Flow {
                     Layout.fillWidth: true

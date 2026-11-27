@@ -720,7 +720,7 @@ Item {
             onHeightChanged: if (C.SplitView.view && C.SplitView.view.resizing) rows.bottomSplit = height / rows.height
             Column {
                 anchors.fill: parent
-                id: bottom
+                id: bottomArea
                 ClipStrip {
                     id: strip
                     onDecorationWindowChanged: function(first,last,pixels) { root.decorationWindowChanged(first,last,pixels) }
@@ -745,7 +745,7 @@ Item {
                     qualifierOpen: root.qualifierOpen
                     onQualifierOpenChanged: root.qualifierOpen = qualifierOpen
                     width: parent.width
-                    height: bottom.height - strip.height
+                    height: bottomArea.height - strip.height
                     enabled: root.versionsEditable
                     node: root.node
                     displayedWindow: root.displayedWindow

@@ -97,7 +97,7 @@ Rectangle {
                 // instead of being rebuilt under the pointer.
                 model: root.strips.length
                 delegate: ChannelStrip {
-                    id: strip
+                    id: stripItem
                     required property int index
                     readonly property var entry: root.strips[index] !== undefined ? root.strips[index] : ({ kind: "track", index: -99, name: "", mix: {} })
                     objectName: "strip:" + entry.index
@@ -111,7 +111,7 @@ Rectangle {
                     selected: root.selectedTrack === entry.index
                     levels: entry.kind === "master" ? root.routingLevels.find(function(m){return m.id === "master"}) || ({ out: [root.masterLeft, root.masterRight] })
                           : entry.kind === "track" && root.trackLevels[entry.index] !== undefined ? root.trackLevels[entry.index]
-                          : entry.kind === "bus" ? root.routingLevels.find(function (m) { return m.id === strip.entry.busId }) || {} : ({})
+                          : entry.kind === "bus" ? root.routingLevels.find(function (m) { return m.id === stripItem.entry.busId }) || {} : ({})
                     onSelectedRequested: root.trackSelected(entry.index)
                     onMixFinished: function (key) { root.mixFinished(entry.index, key) }
                     onMixStarted: function (key) { root.mixStarted(entry.index, key) }
@@ -128,7 +128,7 @@ Rectangle {
                     onInsertOpened: function (i) { root.insertOpened(entry.index, i) }
                     onInsertBypassToggled: function (i, b) {
                         var fx = (entry.mix.fx !== undefined ? entry.mix.fx : []).map(function (e) { var c = {}; for (var k in e) c[k] = e[k]; return c })
-                        if (i < fx.length) { fx[i].bypass = b; strip.mixEdited("fx", fx) }
+                        if (i < fx.length) { fx[i].bypass = b; stripItem.mixEdited("fx", fx) }
                     }
                     onInsertAddRequested: root.insertAddRequested(entry.index)
                 }

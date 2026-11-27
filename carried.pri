@@ -12,5 +12,5 @@ packaged {
     # leave out the ones the program does not call itself.
     LIBS += -Wl,--no-as-needed \
             $$system("pkg-config --libs-only-l OpenEXR Imath yaml-cpp | sed -E 's/-l([^ ]+)/-l:lib\\1.so/g'") \
-            -lopencv_dnn -lopencv_geometry -lopencv_flann -lpystring -lminizip-ng -lopenjph -Wl,--as-needed
+            -lopencv_dnn -lopencv_imgcodecs -lopencv_geometry -lopencv_flann -lpystring -lminizip-ng -lopenjph -Wl,--as-needed
 }

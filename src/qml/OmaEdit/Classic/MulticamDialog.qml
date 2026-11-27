@@ -206,7 +206,7 @@ Ui.FormDialog {
                 contentItem: RowLayout {
                     spacing: 8
                     Rectangle {
-                        width: 22; height: 22; radius: 4
+                        Layout.preferredWidth: 22; Layout.preferredHeight: 22; radius: 4
                         color: multicamDialog.angleOf(index) !== -1 ? win.accent : "transparent"
                         border.color: win.seamColor
                         border.width: 1

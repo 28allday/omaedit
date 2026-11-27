@@ -28,6 +28,7 @@
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QScopeGuard>
+#include <QSettings>
 #include <QSocketNotifier>
 #include <QTemporaryDir>
 #include <QTemporaryFile>
@@ -1863,6 +1864,13 @@ int agentCliMain(int argc, char **argv) {
   qunsetenv("QT_STYLE_OVERRIDE");
   qputenv("OMAEDIT_BACKGROUND_RENDER", "0");
   qputenv("OMAEDIT_VIEWER_PROCESSING", "cpu");
+  // Qt's media backend is here for sound devices alone (OmaEdit decodes and
+  // encodes pictures with its own FFmpeg), yet as it starts it opens every
+  // hardware video device it knows; CUDA's alone made each command most of a
+  // second slower. A command never plays or records pictures through it.
+  for (const char *types : {"QT_FFMPEG_DECODING_HW_DEVICE_TYPES", "QT_FFMPEG_ENCODING_HW_DEVICE_TYPES"})
+    if (!qEnvironmentVariableIsSet(types))
+      qputenv(types, "");
   qputenv("XDG_CONFIG_HOME", (state + "/config").toUtf8());
   qputenv("XDG_DATA_HOME", (state + "/data").toUtf8());
   qputenv("XDG_CACHE_HOME", (state + "/cache").toUtf8());
@@ -1873,10 +1881,22 @@ int agentCliMain(int argc, char **argv) {
   app.setApplicationVersion(QStringLiteral(OMAEDIT_VERSION));
   app.setQuitOnLastWindowClosed(false);
   app.setProperty("omaedit.agent", true);
-  // (The GPU that draws is the first one tried for decoding.)
+  // (The GPU that draws is the first one tried for decoding.) With software
+  // decoding chosen, there is nothing to try on it: finding the GPUs would
+  // wake every GPU's driver (most of a second, more with commands side by
+  // side) for a command that may draw nothing. They are found when first
+  // needed, and the decoding report names the GPU when it is read.
   {
-    const int drawing = render::engineGpu();
-    SuiteVideo::configureDecoding(drawing >= 0 ? QString::number(drawing) : QString());
+    const auto saved = SuiteVideo::normalizedDecodePreference(
+        QSettings().value("hardware/videoDecoder", "auto").toString());
+    if (SuiteVideo::normalizedDecodePreference(qEnvironmentVariable("OMAEDIT_VIDEO_DECODER", saved)) == "software") {
+      render::keepEngineChoice();
+      SuiteVideo::configureDecoding();
+      app.setProperty("omaedit.drawingDeviceLater", true);
+    } else {
+      const int drawing = render::engineGpu();
+      SuiteVideo::configureDecoding(drawing >= 0 ? QString::number(drawing) : QString());
+    }
   }
   QCommandLineParser parser;
   parser.setApplicationDescription(

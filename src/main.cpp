@@ -18,6 +18,7 @@
 #include <QQuickStyle>
 #include <QQuickWindow>
 #include <QSaveFile>
+#include <QStyleHints>
 #include <QTimer>
 #include <QUrl>
 
@@ -53,6 +54,11 @@ int main(int argc, char *argv[]) {
 
     // The same Qt Controls family Quickshell — the Omarchy shell — builds on.
     QQuickStyle::setStyle(QStringLiteral("Material"));
+    // The pointer's hover reaches every control, whatever the platform theme
+    // says. Omarchy's Qt theme (qtengine) leaves Qt's own default, which is
+    // off: no tooltips, no menu following the pointer along the bar, and
+    // nothing under the pointer that waits for it to come over.
+    app.styleHints()->setUseHoverEffects(true);
     SuiteQuick::configureInterface();
     // (The GPU that draws is the first one tried for decoding.)
     {

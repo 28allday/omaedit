@@ -4,9 +4,10 @@ set -eu
 # What pacman and ldd print is read below, whatever language the computer speaks.
 export LC_ALL=C
 
-# OmaEdit carries its own FFmpeg, for two things the system's has not: the
-# Vulkan encoders new in 9.1 (APV among them) and the patch that lets a laptop's
-# NVIDIA card sleep. This builds it from a pinned commit, for OmaEdit alone, into
+# OmaEdit carries its own FFmpeg, for the patch that lets a laptop's NVIDIA card
+# sleep, which the system's has not, and so that the Vulkan encoders it uses (APV
+# among them, new in 9.1) are the ones it was tested with whatever FFmpeg the
+# system moves on to. This builds it from a pinned commit, for OmaEdit alone, into
 # /usr/lib/omaedit/ffmpeg, where the program looks first. Everything else on the
 # computer keeps the system FFmpeg.
 #
@@ -30,7 +31,7 @@ SRC="$ROOT/build/ffmpeg-src"
 OUT="$ROOT/build/ffmpeg"          # staged as $OUT$PREFIX
 PREFIX=/usr/lib/omaedit/ffmpeg
 URL=https://github.com/FFmpeg/FFmpeg.git
-COMMIT=47b92841e33b67c1699394415641b34d1157d8d7   # release/9.1, "Prepare release/9.1", 2026-10-23
+COMMIT=74e4393595cf2b5857f0da925c4e0dd74ea306e5   # tag n9.1, the 9.1 release, 2026-11-19
 # The patches in pkgbuild/ffmpeg, in order. 0001: no VK_NV_optical_flow unless
 # asked for, since NVIDIA's driver starts CUDA for it, which keeps a laptop's
 # discrete GPU awake after the work has moved off it.

@@ -314,7 +314,7 @@ Item {
                             Text { text: taskRow.modelData.state; color: taskRow.modelData.state === "failed" || taskRow.modelData.state === "partial" ? Theme.warning : Theme.textSecondary; font.pixelSize: Theme.fsLabel }
                         }
                         Caption { text: taskRow.modelData.message || qsTr("Queued") }
-                        Rectangle { Layout.fillWidth: true; height: Theme.s1; color: Theme.border; Rectangle { width: parent.width * taskRow.modelData.percent / 100; height: parent.height; color: Theme.accent } }
+                        Rectangle { Layout.fillWidth: true; Layout.preferredHeight: Theme.s1; color: Theme.border; Rectangle { width: parent.width * taskRow.modelData.percent / 100; height: parent.height; color: Theme.accent } }
                         RowLayout {
                             ToolButton { text: qsTr("Cancel"); visible: taskRow.modelData.state === "running" || taskRow.modelData.state === "queued"; onClicked: root.engine.mediaTasks.cancel(taskRow.modelData.id) }
                             ToolButton { text: qsTr("Retry"); visible: ["failed", "partial", "cancelled"].indexOf(taskRow.modelData.state) >= 0; onClicked: root.engine.mediaTasks.retry(taskRow.modelData.id) }

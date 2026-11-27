@@ -189,7 +189,6 @@ Rectangle {
                 width: categoryScroll.width
                 Media.SidebarRow {
                     activeFocusOnTab: true
-                    property bool keyboardConsumesKeys: true
                     Keys.onSpacePressed: activated()
                     Keys.onReturnPressed: activated()
                     Keys.onEnterPressed: activated()
@@ -204,7 +203,6 @@ Rectangle {
                     model: Theme.roleNames.slice(0, 6)
                     delegate: Media.SidebarRow {
                         activeFocusOnTab: true
-                        property bool keyboardConsumesKeys: true
                         Keys.onSpacePressed: activated()
                         Keys.onReturnPressed: activated()
                         Keys.onEnterPressed: activated()
@@ -229,7 +227,6 @@ Rectangle {
                         model: root.collections
                         delegate: Media.SidebarRow {
                             activeFocusOnTab: true
-                            property bool keyboardConsumesKeys: true
                             Keys.onSpacePressed: activated()
                             Keys.onReturnPressed: activated()
                             Keys.onEnterPressed: activated()

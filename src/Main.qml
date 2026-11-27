@@ -21,8 +21,8 @@ ApplicationWindow {
     // its own `win`, and inside `Part { win: … }` the name `win` would be
     // that property, not this id.
     readonly property var thisWindow: win
-    property alias keyboardNavigation: keyboardNavigation
-    Ui.KeyboardNavigation { id: keyboardNavigation; window: win }
+    property alias keyboardNavigation: keyboardNavigator
+    Ui.KeyboardNavigation { id: keyboardNavigator; window: win }
     width: 1440
     height: 900
     minimumWidth: 960
@@ -613,7 +613,7 @@ ApplicationWindow {
     // App-context shortcuts fire even while a TextField has focus, so every
     // one of them stands down while a text-entry dialog is open — or while
     // a persistent search field is being typed into.
-    readonly property bool keysFree: !keyboardNavigation.textFocused && !Ui.Commands.popupOpen && !classicLayout.titleTextActive && !titleDialog.visible
+    readonly property bool keysFree: !keyboardNavigator.textFocused && !Ui.Commands.popupOpen && !classicLayout.titleTextActive && !titleDialog.visible
                                      && !classicLayout.sequenceRenameOpen
                                      && !multicamDialog.visible
                                      && !markerDialog.visible

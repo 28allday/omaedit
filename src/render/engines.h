@@ -33,4 +33,8 @@ AVBufferRef *sharedDevice(int *index);
 // on this GPU hands its pictures over without copies, one on another GPU has
 // every picture brought down to memory and sent up again.
 int engineGpu();
+// The GPU chosen in Preferences, read now without looking for any GPU: the
+// GPUs are then found when first needed, by the choice as it was here (a
+// choice changes at the next start). For a program that may never draw.
+void keepEngineChoice();
 }
